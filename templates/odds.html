@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MLB Betting Odds</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container mt-5">
+    <h1>MLB Betting Odds</h1>
+    {% for game in games %}
+    <div class="card mt-3">
+        <div class="card-body">
+            <h5 class="card-title">{{ game.home_team }} vs {{ game.away_team }}</h5>
+            <p class="card-text">Start Time: {{ game.commence_time }}</p>
+            {% for market, data in game.markets.items() %}
+                <h6>{{ market.capitalize() }}</h6>
+                <img src="{{ url_for('static', filename='img/fanduel_logo.png') }}" alt="FanDuel">
+                <img src="{{ url_for('static', filename='img/pinnacle_logo.png') }}" alt="Pinnacle">
+                {% for f_data, p_data in zip(data['fanduel'], data['pinnacle']) %}
+                    <div>{{ f_data[0] }}: {{ f_data[1] }} vs {{ p_data[1] }}</div>
+                {% endfor %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+</body>
+</html>
