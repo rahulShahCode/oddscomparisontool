@@ -3,23 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MLB Betting Odds</title>
+    <title>Sports Betting Odds</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
 </head>
 <body>
 <div class="container mt-5">
-    <h1>MLB Betting Odds</h1>
+    <h1>Sports Betting Odds</h1>
+    <ul class="nav nav-tabs">
+        <li class="nav-item">
+            <a class="nav-link {{ 'active' if sport == 'baseball_mlb' else '' }}" href="/?sport=baseball_mlb">MLB</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {{ 'active' if sport == 'basketball_nba' else '' }}" href="/?sport=basketball_nba">NBA</a>
+        </li>
+    </ul>
     {% for game in games %}
     <div class="card mt-3">
         <div class="card-body">
             <h5 class="card-title">{{ game.home_team }} vs {{ game.away_team }}</h5>
             <p class="card-text">Start Time: {{ game.commence_time }}</p>
-            {% for market, data in game.markets.items() %}
-                <h6>{{ market.capitalize() }}</h6>
-                <img src="{{ url_for('static', filename='img/fanduel_logo.png') }}" alt="FanDuel">
-                <img src="{{ url_for('static', filename='img/pinnacle_logo.png') }}" alt="Pinnacle">
-                {% for f_data, p_data in zip(data['fanduel'], data['pinnacle']) %}
-                    <div>{{ f_data[0] }}: {{ f_data[1] }} vs {{ p_data[1] }}</div>
+            <div class="row text-center mb-2">
+                <div class="col-md-6">
+                    <img src="{{ url_for('static', filename='img/fanduel_logo.jpg') }}" alt="FanDuel Logo" height="30">
+                    <h6>FanDuel</h6>
+                </div>
+                <div class="col-md-6">
+                    <img src="{{ url_for('static', filename='img/pinnacle_logo.jpg') }}" alt="Pinnacle Logo" height="30">
+                    <h6>Pinnacle</h6>
+                </div>
+            </div>
+            {% for market in game.formatted_markets %}
+                <h6>{{ market.type.capitalize().replace('H2h', 'Moneyline') }}</h6>
+                {% for data in market.data %}
+                    <div class="row text-center">
+                        <div class="col-md-6">
+                            <span>{{ data.name }} {{ data.f_point }}: {{ data.fanduel }}</span>
+                        </div>
+                        <div class="col-md-6">
+                            <span>{{ data.name }} {{ data.p_point }}: {{ data.pinnacle }}</span>
+                        </div>
+                    </div>
                 {% endfor %}
             {% endfor %}
         </div>
