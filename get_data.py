@@ -49,11 +49,13 @@ def format_american_odds(american_odds):
         return f"+{american_odds}"
     return str(american_odds)
 
-def format_point(point):
-    """Format point values to include a '+' sign for positive values."""
+def format_point(point, market_type):
+    """Format point values to include a '+' sign for positive values, except for totals."""
     try:
-        if float(point) > 0:
-            return f"+{point}"
+        point_val = float(point)
+        if market_type != 'totals':
+            if point_val > 0:
+                return f"+{point}"
         return str(point)
     except ValueError:
         return point  # Return the point as is if it's not a number
@@ -74,27 +76,12 @@ def process_games(games):
                 for f_outcome, p_outcome in zip(fanduel_data['outcomes'], pinnacle_data['outcomes']):
                     f_american = format_american_odds(f_outcome['price'])
                     p_american = format_american_odds(p_outcome['price'])
-                    f_point = format_point(f_outcome.get('point', ''))
-                    p_point = format_point(p_outcome.get('point', ''))
+                    f_point = format_point(f_outcome.get('point', ''), market_key) if 'point' in f_outcome else ''
+                    p_point = format_point(p_outcome.get('point', ''), market_key) if 'point' in p_outcome else ''
 
-                    f_prob = american_to_probability(int(f_american.replace('+', '')))
-                    p_prob = american_to_probability(int(p_american.replace('+', '')))
-                    
-                    # Checking point value favorability
-                    if market_key in ['spreads', 'totals']:
-                        f_point_val = float(f_point.replace('+', ''))
-                        p_point_val = float(p_point.replace('+', ''))
-                        if (f_point_val > p_point_val and f_point_val > 0) or \
-                           (f_point_val < p_point_val and f_point_val < 0):
-                                formatted_market['data'].append({
-                                    'name': f_outcome['name'],
-                                    'fanduel': f_american,
-                                    'pinnacle': p_american,
-                                    'f_point': f_point,
-                                    'p_point': p_point
-                                })
-                    else:
-                        if p_prob > f_prob:
+                    # Handle moneyline comparison
+                    if market_key == 'h2h':
+                        if int(f_american.replace('+', '')) > int(p_american.replace('+', '')):
                             formatted_market['data'].append({
                                 'name': f_outcome['name'],
                                 'fanduel': f_american,
@@ -102,7 +89,26 @@ def process_games(games):
                                 'f_point': f_point,
                                 'p_point': p_point
                             })
-                
+                    elif market_key == 'totals':
+                        is_over = 'Over' in f_outcome['name']
+                        if (is_over and float(f_point) < float(p_point)) or (not is_over and float(f_point) > float(p_point)):
+                            formatted_market['data'].append({
+                                'name': f_outcome['name'],
+                                'fanduel': f_american,
+                                'pinnacle': p_american,
+                                'f_point': f_point,
+                                'p_point': p_point
+                            })
+                    elif market_key == 'spreads':
+                        if (float(f_point) > float(p_point)):
+                            formatted_market['data'].append({
+                                'name': f_outcome['name'],
+                                'fanduel': f_american,
+                                'pinnacle': p_american,
+                                'f_point': f_point,
+                                'p_point': p_point
+                            })
+
                 if formatted_market['data']:
                     game['formatted_markets'].append(formatted_market)
 
