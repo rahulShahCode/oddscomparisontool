@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request
 import requests
+import json 
 import os
 from datetime import datetime, timedelta
 
@@ -15,8 +16,8 @@ def decimal_to_american(odds):
 
 def format_datetime(timestamp):
     utc_time = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%SZ')
-    est_time = utc_time - timedelta(hours=5)  # Adjust for Eastern Standard Time
-    return est_time.strftime('%B %d, %Y %H:%M')
+    est_time = utc_time - timedelta(hours=4)  # Adjust for Eastern Daylight Time (EDT)
+    return est_time.strftime('%B %d, %Y %I:%M %p')
 
 def fetch_odds(sport_key):
     api_key = os.getenv('THE_ODDS_API_KEY')
@@ -31,10 +32,14 @@ def fetch_odds(sport_key):
         "oddsFormat": "american"
     }
     response = requests.get(url, params=params)
-    if response.status_code != 200:
-        return f"Failed to retrieve data: {response.status_code} - {response.text}"
-    
-    return response.json()
+    if response.status_code == 200:
+        data = response.json()
+        # Write response to a JSON file for debugging
+        with open('json/api_response.json', 'w') as f:
+            json.dump(data, f, indent=4)
+        return data
+    else:
+        raise Exception(f"Failed to retrieve data: {response.status_code} - {response.text}")
 
 def american_to_probability(american_odds):
     """Convert American odds to implied probability."""
@@ -63,57 +68,59 @@ def format_point(point, market_type):
 def process_games(games):
     processed_games = []
     for game in games:
-        game['commence_time'] = format_datetime(game['commence_time'])
-        game['formatted_markets'] = []
-        fanduel_markets = {market['key']: market for bookmaker in game['bookmakers'] if bookmaker['key'] == 'fanduel' for market in bookmaker['markets']}
-        pinnacle_markets = {market['key']: market for bookmaker in game['bookmakers'] if bookmaker['key'] == 'pinnacle' for market in bookmaker['markets']}
-        
-        for market_key in ['h2h', 'spreads', 'totals']:
-            if market_key in fanduel_markets and market_key in pinnacle_markets:
-                formatted_market = {'type': market_key, 'data': []}
-                fanduel_data = fanduel_markets[market_key]
-                pinnacle_data = pinnacle_markets[market_key]
-                for f_outcome, p_outcome in zip(fanduel_data['outcomes'], pinnacle_data['outcomes']):
-                    f_american = format_american_odds(f_outcome['price'])
-                    p_american = format_american_odds(p_outcome['price'])
-                    f_point = format_point(f_outcome.get('point', ''), market_key) if 'point' in f_outcome else ''
-                    p_point = format_point(p_outcome.get('point', ''), market_key) if 'point' in p_outcome else ''
+        if len(game['bookmakers']) > 0: # check if there are lines for the game. 
+            game['commence_time'] = format_datetime(game['commence_time'])
+            game['formatted_markets'] = []
+            fanduel_markets = {market['key']: market for bookmaker in game['bookmakers'] if bookmaker['key'] == 'fanduel' for market in bookmaker['markets']}
+            pinnacle_markets = {market['key']: market for bookmaker in game['bookmakers'] if bookmaker['key'] == 'pinnacle' for market in bookmaker['markets']}
+            game['last_update'] = format_datetime(game['bookmakers'][0]['last_update'])
+            for market_key in ['h2h', 'spreads', 'totals']:
+                if market_key in fanduel_markets and market_key in pinnacle_markets:
+                    formatted_market = {'type': market_key, 'data': []}
+                    fanduel_data = fanduel_markets[market_key]
+                    pinnacle_data = pinnacle_markets[market_key]
+                    for f_outcome, p_outcome in zip(fanduel_data['outcomes'], pinnacle_data['outcomes']):
+                        f_american = format_american_odds(f_outcome['price'])
+                        p_american = format_american_odds(p_outcome['price'])
+                        f_point = format_point(f_outcome.get('point', ''), market_key) if 'point' in f_outcome else ''
+                        p_point = format_point(p_outcome.get('point', ''), market_key) if 'point' in p_outcome else ''
 
-                    # Handle moneyline comparison
-                    if market_key == 'h2h':
-                        if int(f_american.replace('+', '')) > int(p_american.replace('+', '')):
-                            formatted_market['data'].append({
-                                'name': f_outcome['name'],
-                                'fanduel': f_american,
-                                'pinnacle': p_american,
-                                'f_point': f_point,
-                                'p_point': p_point
-                            })
-                    elif market_key == 'totals':
-                        is_over = 'Over' in f_outcome['name']
-                        if (is_over and float(f_point) < float(p_point)) or (not is_over and float(f_point) > float(p_point)):
-                            formatted_market['data'].append({
-                                'name': f_outcome['name'],
-                                'fanduel': f_american,
-                                'pinnacle': p_american,
-                                'f_point': f_point,
-                                'p_point': p_point
-                            })
-                    elif market_key == 'spreads':
-                        if (float(f_point) > float(p_point)):
-                            formatted_market['data'].append({
-                                'name': f_outcome['name'],
-                                'fanduel': f_american,
-                                'pinnacle': p_american,
-                                'f_point': f_point,
-                                'p_point': p_point
-                            })
 
-                if formatted_market['data']:
-                    game['formatted_markets'].append(formatted_market)
+                        # Handle moneyline comparison
+                        if market_key == 'h2h':
+                            if int(f_american.replace('+', '')) > int(p_american.replace('+', '')):
+                                formatted_market['data'].append({
+                                    'name': f_outcome['name'],
+                                    'fanduel': f_american,
+                                    'pinnacle': p_american,
+                                    'f_point': f_point,
+                                    'p_point': p_point    
+                                })
+                        elif market_key == 'totals':
+                            is_over = 'Over' in f_outcome['name']
+                            if (is_over and float(f_point) < float(p_point)) or (not is_over and float(f_point) > float(p_point)):
+                                formatted_market['data'].append({
+                                    'name': f_outcome['name'],
+                                    'fanduel': f_american,
+                                    'pinnacle': p_american,
+                                    'f_point': f_point,
+                                    'p_point': p_point
+                                })
+                        elif market_key == 'spreads':
+                            if (float(f_point) > float(p_point)):
+                                formatted_market['data'].append({
+                                    'name': f_outcome['name'],
+                                    'fanduel': f_american,
+                                    'pinnacle': p_american,
+                                    'f_point': f_point,
+                                    'p_point': p_point
+                                })
 
-        if game['formatted_markets']:
-            processed_games.append(game)
+                    if formatted_market['data']:
+                        game['formatted_markets'].append(formatted_market)
+
+            if game['formatted_markets']:
+                processed_games.append(game)
 
     return processed_games
 
