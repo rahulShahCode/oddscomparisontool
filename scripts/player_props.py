@@ -5,8 +5,8 @@ import pytz
 import os 
 
 api_key = os.getenv('THE_ODDS_API_KEY')
-sports = ['baseball_mlb']
-
+sports = ['baseball_mlb', 'basketball_wnba']
+markets = ['player_points', 'batter_hits', 'pitcher_strikeouts', 'player_goal_scorer_anytime','player_to_receive_card','player_shots_on_target']
 # Function to convert UTC to EDT 
 def convert_utc_to_edt(utc_time_str):
     # Create a datetime object from the UTC time string
@@ -26,7 +26,7 @@ def fetch_props(eventId, sport):
     params = {
         "apiKey" : api_key, 
         "regions" : "us",
-        "markets" : "player_points,player_threes,player_rebounds,player_assists",
+        "markets" : ','.join(markets),
         "oddsFormat" : "american",  
         "bookmakers" : "fanduel,draftkings,pinnacle"
     }
@@ -38,21 +38,20 @@ def get_events(sport):
     url = f'https://api.the-odds-api.com/v4/sports/{sport}/events'
     resp = requests.get(url, params=params).json()
     for game in resp: 
-        game['commence_time'] = convert_utc_to_edt(game['commence_time'])
+        game['commence_time_edt'] = convert_utc_to_edt(game['commence_time'])[:-4]
     return resp 
 
 # Function to filter games that start today in EDT timezone 
 def get_todays_events(events): 
     # Get today's date in EDT
-    today = datetime.now(pytz.timezone('America/New_York')).date()
+    now = datetime.now(pytz.timezone('America/New_York'))
     
     # Filter games that start today
     today_events = []
     for game in events:
-        # Strip the timezone part and parse the datetime string
-        datetime_str = game['commence_time'][:-4]  # Removes the " EDT"
-        game_date = datetime.strptime(datetime_str, '%Y-%m-%d %H:%M:%S').date()
-        if game_date == today:
+        # Parse the datetime string in EDT format
+        game_time_edt = datetime.strptime(game['commence_time_edt'], '%Y-%m-%d %H:%M:%S').replace(tzinfo=pytz.timezone('America/New_York'))
+        if game_time_edt.date() == now.date() and game_time_edt > now:
             today_events.append(game)
     return today_events
 
@@ -76,7 +75,8 @@ def find_favorable_lines(props):
         'player_points': 'Points',
         'player_assists': 'Assists',
         'player_rebounds': 'Rebounds',
-        'player_threes': 'Threes'
+        'player_threes': 'Threes',
+        'pitcher_strikeouts' : 'Strikeouts'
     }
 
     for bookmaker in bookmakers:
@@ -125,17 +125,7 @@ def find_favorable_lines(props):
     results_with_different_points.sort(key=lambda x: abs(x['delta']), reverse=True)
     results_with_same_points.sort(key=lambda x: abs(x['delta']), reverse=True)
 
-    # Output results
-    print("Results with Different Point Values:")
-    for result in results_with_different_points:
-        print(f"[{result['source']}] : {result['player']} [{result['type']} {result['point']} {result['bet_type']}] @ {result['odds']}, Pinnacle {result['pinnacle']} {result['delta']:.2f}%")
-
-    print("\nResults with Same Point Values, Comparing Odds:")
-    for result in results_with_same_points:
-        print(f"[{result['source']}] : {result['player']} [{result['type']} {result['point']} {result['bet_type']}] @ {result['odds']}, Pinnacle {result['pinnacle']} {result['delta']:.2f}%")
-
-
-
+    return [results_with_different_points, results_with_same_points]
 
 
 
@@ -143,13 +133,30 @@ def main():
     sport = sports[0]
     events = get_events(sport)
     today_events = get_todays_events(events)
-    with open('json/events.json', 'w') as f:
+    with open('data/debug/events.json', 'w') as f:
         json.dump(events, f)
     for event in today_events: 
         props = fetch_props(event['id'], event['sport_key'])
-        with open('json/player_props.json', 'w') as f:
+        with open('data/debug/player_props.json', 'w') as f:
             json.dump(props, f)
-        find_favorable_lines(props)  # Process the data
+        results = find_favorable_lines(props)  # Process the data
+        first_iteration = True 
+        if len(results[0]) != 0 or len(results[1]) != 0:
+            print('{} @ {}'.format(props['away_team'], props['home_team']))
+            for result in results: 
+                if first_iteration: 
+                    first_iteration = False 
+                    if len(result) != 0:
+                        print("\tResults with Different Point Values:")
+                        for r in result:
+                            print(f"\t\t[{r['source']}] : {r['player']} [{r['type']} {r['point']} {r['bet_type']}] @ {r['odds']}, Pinnacle {r['pinnacle']} {r['delta']:.2f}%")
+                else: 
+                    if len(result) != 0: 
+                        print("\tResults with Same Point Values:")
+                        for r in result:
+                            print(f"\t\t[{r['source']}] : {r['player']} [{r['type']} {r['point']} {r['bet_type']}] @ {r['odds']}, Pinnacle {r['pinnacle']} {r['delta']:.2f}%")
+
+                
 
 
 
