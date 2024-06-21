@@ -1,12 +1,9 @@
-from flask import Flask, render_template, request
 import requests
 import json
 import os
 from datetime import datetime, timezone, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 import atexit
-
-app = Flask(__name__)
 
 def decimal_to_american(odds):
     if odds > 2.0:
@@ -199,13 +196,3 @@ def fetch_odds(sport_key):
 # scheduler.add_job(func=fetch_odds, args=['nba-mlb'], trigger="interval", minutes=2)
 # scheduler.start()
 # atexit.register(lambda: scheduler.shutdown())
-
-@app.route('/')
-def home():
-    sport_key = request.args.get('sport', 'baseball_mlb')
-    games = fetch_odds(sport_key)
-    processed_games = process_games(games)
-    return render_template('odds.html', games=processed_games, sport=sport_key)
-
-if __name__ == '__main__':
-    app.run(debug=True)
