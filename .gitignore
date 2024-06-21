@@ -1,3 +1,14 @@
-odds_prob_comparison.py 
-.vscode 
-json
+# Ignore Python cache files
+__pycache__/
+*.py[cod]
+
+# Ignore environment files
+.env
+
+# Ignore debug JSON files
+data/debug/*.json
+
+# Ignore other unnecessary files
+*.log
+*.sqlite3
+*.db
