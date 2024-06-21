@@ -19,6 +19,28 @@
         <li class="nav-item">
             <a class="nav-link {{ 'active' if sport == 'basketball_nba' else '' }}" href="/?sport=basketball_nba">NBA</a>
         </li>
+        <li class="nav-item">
+            <a class="nav-link {{ 'active' if sport == 'icehockey_nhl' else '' }}" href="/?sport=icehockey_nhl">NHL</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {{ 'active' if sport == 'soccer_usa_mls' else '' }}" href="/?sport=soccer_usa_mls">MLS</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {{ 'active' if sport == 'soccer_epl' else '' }}" href="/?sport=soccer_epl">EPL</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {{ 'active' if sport == 'soccer_germany_bundesliga' else '' }}" href="/?sport=soccer_germany_bundesliga">Bundesliga</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {{ 'active' if sport == 'soccer_italy_serie_a' else '' }}" href="/?sport=soccer_italy_serie_a">Serie A</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {{ 'active' if sport == 'soccer_spain_la_liga' else '' }}" href="/?sport=soccer_spain_la_liga">La Liga</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {{ 'active' if sport == 'soccer_uefa_champs_league' else '' }}" href="/?sport=soccer_uefa_champs_league">UCL</a>
+        </li>
+
     </ul>
     {% for game in games %}
     <div class="card mt-3">
