@@ -103,11 +103,41 @@ def process_games(games):
                                 'p_point': p_point
                             })
 
-                if formatted_market['data']:
-                    game['formatted_markets'].append(formatted_market)
+                        # Handle moneyline comparison
+                        if market_key == 'h2h':
+                            if int(f_american.replace('+', '')) > int(p_american.replace('+', '')):
+                                formatted_market['data'].append({
+                                    'name': f_outcome['name'],
+                                    'fanduel': f_american,
+                                    'pinnacle': p_american,
+                                    'f_point': f_point,
+                                    'p_point': p_point    
+                                })
+                        elif market_key == 'totals':
+                            is_over = 'Over' in f_outcome['name']
+                            if (is_over and float(f_point) < float(p_point)) or (not is_over and float(f_point) > float(p_point)):
+                                formatted_market['data'].append({
+                                    'name': f_outcome['name'],
+                                    'fanduel': f_american,
+                                    'pinnacle': p_american,
+                                    'f_point': f_point,
+                                    'p_point': p_point
+                                })
+                        elif market_key == 'spreads':
+                            if (float(f_point) > float(p_point)):
+                                formatted_market['data'].append({
+                                    'name': f_outcome['name'],
+                                    'fanduel': f_american,
+                                    'pinnacle': p_american,
+                                    'f_point': f_point,
+                                    'p_point': p_point
+                                })
 
-        if game['formatted_markets']:
-            processed_games.append(game)
+                    if formatted_market['data']:
+                        game['formatted_markets'].append(formatted_market)
+
+            if game['formatted_markets']:
+                processed_games.append(game)
 
     return processed_games
 
