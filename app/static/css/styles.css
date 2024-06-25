@@ -1,4 +1,27 @@
 /* styles.css */
+.book_logo {
+    margin-left: 5px;
+}
+.inline-market {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.inline-market h6 {
+    margin-right: 1rem;
+    margin-bottom: 0; /* Remove bottom margin to align properly */
+}
+
+.inline-outcome {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex: 1;
+    margin-bottom: 0.5rem;
+}
+
+
 header {
     display: flex;
     align-items: center;

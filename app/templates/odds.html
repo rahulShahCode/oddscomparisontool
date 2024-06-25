@@ -89,29 +89,27 @@
                     <h5 class="card-title">{{ game.home_team }} vs {{ game.away_team }}</h5>
                     <p class="card-text">Start Time: {{ game.commence_time }}</p>
                     <div class="row text-center mb-2">
+                        {% for bookmaker in game.bookmakers %}
                         <div class="col-md-6">
-                            <img src="{{ url_for('static', filename='img/fanduel_logo.jpg') }}" alt="FanDuel Logo"
-                                height="30">
-                            <h6>FanDuel</h6>
                         </div>
-                        <div class="col-md-6">
-                            <img src="{{ url_for('static', filename='img/pinnacle_logo.jpg') }}" alt="Pinnacle Logo"
-                                height="30">
-                            <h6>Pinnacle</h6>
-                        </div>
+                        {% endfor %}
                     </div>
                     {% for market in game.formatted_markets %}
-                    <h6>{{ market.type.capitalize().replace('H2h', 'Moneyline') }}</h6>
-                    {% for data in market.data %}
-                    <div class="row text-center">
-                        <div class="col-md-6">
-                            <span>{{ data.name }} {{ data.f_point }}: {{ data.fanduel }}</span>
+                    <div class="inline-market">
+                        <h6>{{ market.type.capitalize().replace('H2h', 'Moneyline') }}</h6>
+                        {% for data in market.data %}
+                        <div class="row text-center inline-outcome">
+                            <div class="col-md-6">
+                                <span>{{ data.name }} {{ data.my_point }}: {{ data.my_book }}</span>
+                                <img src="{{ url_for('static', filename='img/' ~ data.book_name ~ '_logo.jpg') }}" class="book_logo" alt="{{ data.book_name }} Logo" height="20">
+                            </div>
+                            <div class="col-md-6">
+                                <span>{{ data.name }} {{ data.p_point }}: {{ data.pinnacle }}</span>
+                                <img src="static/img/pinnacle_logo.jpg"  class="book_logo" alt="Pinnacle Logo" height="20">
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <span>{{ data.name }} {{ data.p_point }}: {{ data.pinnacle }}</span>
-                        </div>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
                     {% endfor %}
                 </div>
             </div>

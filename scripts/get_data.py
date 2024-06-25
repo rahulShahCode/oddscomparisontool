@@ -5,6 +5,80 @@ from datetime import datetime, timezone, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 import atexit
 
+my_bookmakers = ['fanduel', 'draftkings']
+sharp_bookmakers = ['pinnacle']
+
+def get_best_odds(books): 
+    market_type = list(books.values())[0]['key']
+    outcomes = {} 
+    for book, details in books.items(): 
+        for outcome in details['outcomes']:
+            name = outcome['name']
+            price = outcome['price']
+            point = outcome.get('point', None)
+            if name not in outcomes:
+                outcomes[name] = {
+                    'best_price': price,
+                    'best_point': point,
+                    'sportsbook': book
+                }
+            else:
+                current_best = outcomes[name]
+                if market_type == 'h2h':
+                    if price > current_best['best_price']:
+                        outcomes[name] = {
+                            'best_price': price,
+                            'best_point': point,
+                            'sportsbook': book
+                        }
+                elif market_type == 'totals':
+                    if name == 'Over':
+                        if point < current_best['best_point'] or (point == current_best['best_point'] and price > current_best['best_price']):
+                            outcomes[name] = {
+                                'best_price': price,
+                                'best_point': point,
+                                'sportsbook': book
+                            }
+                    elif name == 'Under':
+                        if point > current_best['best_point'] or (point == current_best['best_point'] and price > current_best['best_price']):
+                            outcomes[name] = {
+                                'best_price': price,
+                                'best_point': point,
+                                'sportsbook': book
+                            }
+                elif market_type == 'spreads':
+                    if abs(point) > abs(current_best['best_point']) or (abs(point) == abs(current_best['best_point']) and price > current_best['best_price']):
+                        outcomes[name] = {
+                            'best_price': price,
+                            'best_point': point,
+                            'sportsbook': book
+                        }
+    best_odds = []
+    for name, details in outcomes.items():
+        best_odds.append({
+            'name': name,
+            'price': details['best_price'],
+            'point': details['best_point'],
+            'sportsbook': details['sportsbook']
+        })
+    
+    return best_odds
+
+def match_market(market_lst,market_type): 
+    for market in market_lst: 
+        if market['key'] == market_type:
+            return market  
+    return None 
+
+def get_markets_by_type(bookmakers, market_type):
+    result = {}
+    for bookmaker, market_lst in bookmakers.items():
+        market = match_market(market_lst,market_type)
+        if market: 
+            result[bookmaker] = market 
+    return result
+
+
 def decimal_to_american(odds):
     if odds > 2.0:
         return f"+{int((odds - 1) * 100)}"
@@ -48,59 +122,68 @@ def process_games(games):
     for game in games:
         game['commence_time'] = format_datetime(game['commence_time'])
         game['formatted_markets'] = []
-        fanduel_markets = {market['key']: market for bookmaker in game['bookmakers'] if bookmaker['key'] == 'fanduel' for market in bookmaker['markets']}
-        pinnacle_markets = {market['key']: market for bookmaker in game['bookmakers'] if bookmaker['key'] == 'pinnacle' for market in bookmaker['markets']}
+        my_book_markets = {
+            book: [market for bookmaker in game['bookmakers'] if bookmaker['key'] == book for market in bookmaker['markets']]
+            for book in my_bookmakers
+        }
+        fanduel_markets = [market for bookmaker in game['bookmakers'] if bookmaker['key'] == 'fanduel' for market in bookmaker['markets']]
+        pinnacle_markets = [market for bookmaker in game['bookmakers'] if bookmaker['key'] == 'pinnacle' for market in bookmaker['markets']]
         
-        for market_key in ['h2h', 'spreads', 'totals']:
-            if market_key in fanduel_markets and market_key in pinnacle_markets:
+        for market_key in ['h2h','spreads','totals']:
+            books_for_curr_market = get_markets_by_type(my_book_markets, market_key)
+            pinnacle_data = match_market(pinnacle_markets,market_key)
+            if books_for_curr_market and pinnacle_data:
                 formatted_market = {'type': market_key, 'data': []}
-                fanduel_data = fanduel_markets[market_key]
-                pinnacle_data = pinnacle_markets[market_key]
-                for f_outcome, p_outcome in zip(fanduel_data['outcomes'], pinnacle_data['outcomes']):
-                    f_american = format_american_odds(f_outcome['price'])
+                best_odds = get_best_odds(books_for_curr_market)
+                for my_outcome, p_outcome in zip(best_odds, pinnacle_data['outcomes']):
+                    my_american = format_american_odds(my_outcome['price'])
                     p_american = format_american_odds(p_outcome['price'])
-                    f_point = format_point(f_outcome.get('point', ''), market_key) if 'point' in f_outcome else ''
+                    my_point = format_point(my_outcome['point'], market_key) if my_outcome['point'] is not None else ''
                     p_point = format_point(p_outcome.get('point', ''), market_key) if 'point' in p_outcome else ''
-                    f_prob = american_to_probability(int(f_outcome['price']))
+                    my_prob = american_to_probability(int(my_outcome['price']))
                     p_prob = american_to_probability(int(p_outcome['price']))
                     # Handle moneyline comparison
                     if market_key == 'h2h':
-                        if (p_prob - f_prob) > 1:
+                        if (p_prob - my_prob) > 1:
                             formatted_market['data'].append({
-                                'name': f_outcome['name'],
-                                'fanduel': f_american,
+                                'name': my_outcome['name'],
+                                'my_book': my_american,
                                 'pinnacle': p_american,
-                                'f_point': f_point,
-                                'p_point': p_point
+                                'my_point': my_point,
+                                'p_point': p_point,
+                                'book_name' : my_outcome['sportsbook']
                             })
                     elif market_key == 'totals':
-                        is_over = 'Over' in f_outcome['name']
-                        if (is_over and float(f_point) < float(p_point)) \
-                        or (not is_over and float(f_point) > float(p_point)
-                        or (float(f_point) == float(p_point) and (p_prob - f_prob) > 1)):
+                        is_over = 'Over' in my_outcome['name']
+                        if (is_over and float(my_point) < float(p_point)) \
+                        or (not is_over and float(my_point) > float(p_point)
+                        or (float(my_point) == float(p_point) and (p_prob - my_prob) > 1)):
                             formatted_market['data'].append({
-                                'name': f_outcome['name'],
-                                'fanduel': f_american,
+                                'name': my_outcome['name'],
+                                'my_book': my_american,
                                 'pinnacle': p_american,
-                                'f_point': f_point,
-                                'p_point': p_point
+                                'my_point': my_point,
+                                'p_point': p_point,
+                                'book_name' : my_outcome['sportsbook']
                             })
                     elif market_key == 'spreads':
-                        if (float(f_point) > float(p_point)):
+                        if (float(my_point) > float(p_point)):
                             formatted_market['data'].append({
-                                'name': f_outcome['name'],
-                                'fanduel': f_american,
+                                'name': my_outcome['name'],
+                                'my_book': my_american,
                                 'pinnacle': p_american,
-                                'f_point': f_point,
-                                'p_point': p_point
+                                'my_point': my_point,
+                                'p_point': p_point,
+                                'book_name' : my_outcome['sportsbook']
                             })
-                        elif(float(f_point) == float(p_point) and (p_prob - f_prob) > 1): 
-                             formatted_market['data'].append({
-                                'name': f_outcome['name'],
-                                'fanduel': f_american,
+                        elif(float(my_point) == float(p_point) and (p_prob - my_prob) > 1): 
+                            formatted_market['data'].append({
+                                'name': my_outcome['name'],
+                                'my_book': my_american,
                                 'pinnacle': p_american,
-                                'f_point': f_point,
-                                'p_point': p_point
+                                'my_point': my_point,
+                                'p_point': p_point,
+                                'book_name' : my_outcome['sportsbook']
                             })
 
                 if formatted_market['data']:
@@ -123,7 +206,7 @@ def fetch_odds(sport_key):
     url = f'https://api.the-odds-api.com/v4/sports/{sport_key}/odds'
     params = {
         "apiKey": api_key,
-        "bookmakers": "fanduel,pinnacle",
+        "bookmakers": ','.join(my_bookmakers + sharp_bookmakers),
         "markets": "h2h,spreads,totals",
         "oddsFormat": "american"
     }
@@ -131,6 +214,8 @@ def fetch_odds(sport_key):
     if response.status_code == 200:
         games = response.json()
         now = datetime.now(timezone.utc)
+        f = open('data/debug/betting_lines.json', 'w')
+        json.dump(games, f)
         for game in games:
             if datetime.fromisoformat(game['commence_time'][:-1]).replace(tzinfo=timezone.utc) > now:
                 # Store data if the game has not commenced

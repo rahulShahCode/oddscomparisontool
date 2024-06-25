@@ -5,8 +5,8 @@ import pytz
 import os 
 
 api_key = os.getenv('THE_ODDS_API_KEY')
-sports = ['baseball_mlb', 'basketball_wnba']
-markets = ['player_points', 'batter_hits', 'pitcher_strikeouts', 'player_goal_scorer_anytime','player_to_receive_card','player_shots_on_target']
+sports = ['baseball_mlb']
+markets = [ 'pitcher_strikeouts', 'batter_total_bases']
 # Function to convert UTC to EDT 
 def convert_utc_to_edt(utc_time_str):
     # Create a datetime object from the UTC time string
@@ -68,7 +68,7 @@ def find_favorable_lines(props):
     pinnacle_data = next((b for b in bookmakers if b['key'] == 'pinnacle'), None)
     
     if not pinnacle_data:
-        return "No Pinnacle data available."
+        return None 
 
     # Define a simple mapping from market keys to bet types
     bet_type_mapping = {
@@ -76,7 +76,8 @@ def find_favorable_lines(props):
         'player_assists': 'Assists',
         'player_rebounds': 'Rebounds',
         'player_threes': 'Threes',
-        'pitcher_strikeouts' : 'Strikeouts'
+        'pitcher_strikeouts' : 'Strikeouts',
+        'batter_total_bases' : 'Bases'
     }
 
     for bookmaker in bookmakers:
@@ -141,7 +142,7 @@ def main():
             json.dump(props, f)
         results = find_favorable_lines(props)  # Process the data
         first_iteration = True 
-        if len(results[0]) != 0 or len(results[1]) != 0:
+        if results is not None and len(results[0]) != 0 or len(results[1]) != 0:
             print('{} @ {}'.format(props['away_team'], props['home_team']))
             for result in results: 
                 if first_iteration: 
@@ -155,7 +156,6 @@ def main():
                         print("\tResults with Same Point Values:")
                         for r in result:
                             print(f"\t\t[{r['source']}] : {r['player']} [{r['type']} {r['point']} {r['bet_type']}] @ {r['odds']}, Pinnacle {r['pinnacle']} {r['delta']:.2f}%")
-
                 
 
 
