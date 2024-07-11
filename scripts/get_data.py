@@ -2,10 +2,9 @@ import requests
 import json
 import os
 from datetime import datetime, timezone, timedelta
-from apscheduler.schedulers.background import BackgroundScheduler
-import atexit
 
-my_bookmakers = ['fanduel', 'draftkings']
+
+my_bookmakers = ['fanduel', 'draftkings','espnbet','williamhill_us']
 sharp_bookmakers = ['pinnacle']
 
 def get_best_odds(books): 
@@ -64,6 +63,30 @@ def get_best_odds(books):
     
     return best_odds
 
+
+def find_matching_outcome(outcomes, target): 
+    for outcome in outcomes:
+        if outcome['name'] == target['name'] and outcome['point'] == target['point']:
+            return outcome
+    return None
+
+def check_alt_line(eventId,market_type,sport,my_outcome):
+    event_url = f'https://api.the-odds-api.com/v4/sports/{sport}/events/{eventId}/odds'
+    params = {
+        "apiKey" : os.getenv('THE_ODDS_API_KEY'),
+        "bookmakers" : "pinnacle",
+        "markets" : market_type,
+        "oddsFormat" : "american"
+    }
+    response = requests.get(event_url,params=params).json()
+    alt_lines = response['bookmakers'][0]['markets'][0]['outcomes']
+    matching_alt_line = find_matching_outcome(alt_lines,my_outcome)
+    if matching_alt_line is not None: 
+        my_prob = american_to_probability(int(my_outcome['price']))
+        p_prob = american_to_probability(int(matching_alt_line['price']))
+        if (p_prob - my_prob) >= 1:
+            return matching_alt_line
+    return None 
 def match_market(market_lst,market_type): 
     for market in market_lst: 
         if market['key'] == market_type:
@@ -144,7 +167,7 @@ def process_games(games):
                     p_prob = american_to_probability(int(p_outcome['price']))
                     # Handle moneyline comparison
                     if market_key == 'h2h':
-                        if (p_prob - my_prob) > 1:
+                        if (p_prob - my_prob) >= 1:
                             formatted_market['data'].append({
                                 'name': my_outcome['name'],
                                 'my_book': my_american,
@@ -156,8 +179,18 @@ def process_games(games):
                     elif market_key == 'totals':
                         is_over = 'Over' in my_outcome['name']
                         if (is_over and float(my_point) < float(p_point)) \
-                        or (not is_over and float(my_point) > float(p_point)
-                        or (float(my_point) == float(p_point) and (p_prob - my_prob) > 1)):
+                        or (not is_over and float(my_point) > float(p_point)):
+                            alt_line = check_alt_line(game['id'],'alternate_'+market_key,game['sport_key'], my_outcome)
+                            if alt_line is not None:
+                                formatted_market['data'].append({
+                                    'name': my_outcome['name'],
+                                    'my_book': my_american,
+                                    'pinnacle': alt_line['price'],
+                                    'my_point': my_point,
+                                    'p_point': alt_line['point'],
+                                    'book_name' : my_outcome['sportsbook']
+                                })
+                        elif (float(my_point) == float(p_point) and (p_prob - my_prob) >= 1):
                             formatted_market['data'].append({
                                 'name': my_outcome['name'],
                                 'my_book': my_american,
@@ -167,16 +200,18 @@ def process_games(games):
                                 'book_name' : my_outcome['sportsbook']
                             })
                     elif market_key == 'spreads':
-                        if (float(my_point) > float(p_point)):
-                            formatted_market['data'].append({
-                                'name': my_outcome['name'],
-                                'my_book': my_american,
-                                'pinnacle': p_american,
-                                'my_point': my_point,
-                                'p_point': p_point,
-                                'book_name' : my_outcome['sportsbook']
-                            })
-                        elif(float(my_point) == float(p_point) and (p_prob - my_prob) > 1): 
+                        if (float(my_point) != float(p_point)):
+                            alt_line = check_alt_line(game['id'],'alternate_'+market_key,game['sport_key'], my_outcome)
+                            if alt_line is not None: 
+                                formatted_market['data'].append({
+                                    'name': my_outcome['name'],
+                                    'my_book': my_american,
+                                    'pinnacle': alt_line['price'],
+                                    'my_point': my_point,
+                                    'p_point': alt_line['point'],
+                                    'book_name' : my_outcome['sportsbook']
+                                })
+                        elif(float(my_point) == float(p_point) and (p_prob - my_prob) >= 1): 
                             formatted_market['data'].append({
                                 'name': my_outcome['name'],
                                 'my_book': my_american,

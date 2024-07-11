@@ -4,6 +4,8 @@ from datetime import datetime
 import pytz
 import os 
 
+my_bookmakers = ['fanduel', 'draftkings','betmgm','fliff','williamhill_us','pinnacle']
+
 api_key = os.getenv('THE_ODDS_API_KEY')
 sports = ['baseball_mlb']
 markets = [ 'pitcher_strikeouts', 'batter_total_bases']
@@ -28,7 +30,7 @@ def fetch_props(eventId, sport):
         "regions" : "us",
         "markets" : ','.join(markets),
         "oddsFormat" : "american",  
-        "bookmakers" : "fanduel,draftkings,pinnacle"
+        "bookmakers" : ','.join(my_bookmakers)
     }
     return requests.get(url,params=params).json()
 
@@ -44,14 +46,13 @@ def get_events(sport):
 # Function to filter games that start today in EDT timezone 
 def get_todays_events(events): 
     # Get today's date in EDT
-    now = datetime.now(pytz.timezone('America/New_York'))
-    
+    eastern = pytz.timezone('America/New_York')
     # Filter games that start today
     today_events = []
     for game in events:
         # Parse the datetime string in EDT format
-        game_time_edt = datetime.strptime(game['commence_time_edt'], '%Y-%m-%d %H:%M:%S').replace(tzinfo=pytz.timezone('America/New_York'))
-        if game_time_edt.date() == now.date() and game_time_edt > now:
+        game_time_edt = datetime.strptime(game['commence_time_edt'], '%Y-%m-%d %H:%M:%S')
+        if eastern.localize(game_time_edt).date() == eastern.localize(datetime.now()).date() and eastern.localize(game_time_edt) > eastern.localize(datetime.now()):
             today_events.append(game)
     return today_events
 
@@ -117,7 +118,7 @@ def find_favorable_lines(props):
                 # Determine if the line is more favorable
                 if ((outcome['name'] == "Over" and outcome['point'] < pin_outcome['point']) or \
                    (outcome['name'] == "Under" and outcome['point'] > pin_outcome['point'])) and \
-                    pin_prob >= .5:
+                    pin_prob >= .5 and abs(prob_delta) <= 6:
                     results_with_different_points.append(result_entry)
                 elif outcome['point'] == pin_outcome['point'] and prob_delta > 5:
                     results_with_same_points.append(result_entry)
@@ -142,7 +143,7 @@ def main():
             json.dump(props, f)
         results = find_favorable_lines(props)  # Process the data
         first_iteration = True 
-        if results is not None and len(results[0]) != 0 or len(results[1]) != 0:
+        if results is not None and (len(results[0]) != 0 or len(results[1]) != 0):
             print('{} @ {}'.format(props['away_team'], props['home_team']))
             for result in results: 
                 if first_iteration: 

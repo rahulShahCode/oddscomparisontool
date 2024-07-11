@@ -24,12 +24,12 @@
                     href="/?sport=baseball_mlb">MLB</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {{ 'active' if sport == 'soccer_uefa_european_championship' else '' }}"
-                    href="/?sport=soccer_uefa_european_championship">UEFA Euro 2024</a>
-            </li>
-            <li class="nav-item">
                 <a class="nav-link {{ 'active' if sport == 'basketball_wnba' else '' }}"
                     href="/?sport=basketball_wnba">WNBA</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ 'active' if sport == 'soccer_uefa_european_championship' else '' }}"
+                    href="/?sport=soccer_uefa_european_championship">UEFA Euro 2024</a>
             </li>
             <li class="nav-item">
                 <a class="nav-link {{ 'active' if sport == 'mma_mixed_martial_arts' else '' }}"
@@ -51,20 +51,17 @@
                 <a class="nav-link {{ 'active' if sport == 'soccer_usa_mls' else '' }}"
                     href="/?sport=soccer_usa_mls">MLS</a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link {{ 'active' if sport == 'icehockey_nhl' else '' }}"
-                    href="/?sport=icehockey_nhl">NHL</a>
-            </li>
+
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true"
                     aria-expanded="false">More Sports</a>
                 <div class="dropdown-menu">
-                    <a class="dropdown-item" href="/?sport=aussierules_afl">AFL</a>
+                    <!-- <a class="dropdown-item" href="/?sport=aussierules_afl">AFL</a> -->
                     <a class="dropdown-item" href="/?sport=baseball_kbo">KBO</a>
-                    <a class="dropdown-item" href="/?sport=baseball_milb">MiLB</a>
-                    <a class="dropdown-item" href="/?sport=baseball_ncaa">NCAA Baseball</a>
+                    <!-- <a class="dropdown-item" href="/?sport=baseball_milb">MiLB</a>
+                    <a class="dropdown-item" href="/?sport=baseball_ncaa">NCAA Baseball</a> -->
                     <a class="dropdown-item" href="/?sport=baseball_npb">NPB</a>
-                    <a class="dropdown-item" href="/?sport=cricket_t20_blast">T20 Blast</a>
+                    <!-- <a class="dropdown-item" href="/?sport=cricket_t20_blast">T20 Blast</a>
                     <a class="dropdown-item" href="/?sport=soccer_brazil_campeonato">Brazil Série A</a>
                     <a class="dropdown-item" href="/?sport=soccer_brazil_serie_b">Brazil Série B</a>
                     <a class="dropdown-item" href="/?sport=soccer_china_superleague">Super League - China</a>
@@ -78,7 +75,7 @@
                     <a class="dropdown-item" href="/?sport=soccer_norway_eliteserien">Eliteserien - Norway</a>
                     <a class="dropdown-item" href="/?sport=soccer_spain_segunda_division">La Liga 2 - Spain</a>
                     <a class="dropdown-item" href="/?sport=soccer_sweden_allsvenskan">Allsvenskan - Sweden</a>
-                    <a class="dropdown-item" href="/?sport=soccer_sweden_superettan">Superettan - Sweden</a>
+                    <a class="dropdown-item" href="/?sport=soccer_sweden_superettan">Superettan - Sweden</a> -->
                 </div>
             </li>
         </ul>
@@ -86,7 +83,7 @@
             {% for game in games %}
             <div class="card mt-3 game-card" data-is-live="{{ game.is_live }}">
                 <div class="card-body">
-                    <h5 class="card-title">{{ game.home_team }} vs {{ game.away_team }}</h5>
+                    <h5 class="card-title">{{ game.away_team }} @ {{ game.home_team }}</h5>
                     <p class="card-text">Start Time: {{ game.commence_time }}</p>
                     <div class="row text-center mb-2">
                         {% for bookmaker in game.bookmakers %}
