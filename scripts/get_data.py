@@ -2,6 +2,7 @@ import requests
 import json
 import os
 from datetime import datetime, timezone, timedelta
+import logging 
 
 
 my_bookmakers = ['fanduel', 'draftkings','espnbet','williamhill_us']
@@ -78,8 +79,13 @@ def check_alt_line(eventId,market_type,sport,my_outcome):
         "markets" : market_type,
         "oddsFormat" : "american"
     }
-    response = requests.get(event_url,params=params).json()
-    alt_lines = response['bookmakers'][0]['markets'][0]['outcomes']
+
+    response = requests.get(event_url,params=params)
+    # Log the status code and response content
+    logging.debug(f"Status Code: {response.status_code}")
+    logging.debug(f"Response Content: {response.text}")
+    logging.debug(f"Response JSON: {response.json()}")
+    alt_lines = response.json()['bookmakers'][0]['markets'][0]['outcomes']
     matching_alt_line = find_matching_outcome(alt_lines,my_outcome)
     if matching_alt_line is not None: 
         my_prob = american_to_probability(int(my_outcome['price']))
