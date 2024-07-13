@@ -3,6 +3,7 @@ import json
 import os
 from datetime import datetime, timezone, timedelta
 import logging 
+import time
 
 
 my_bookmakers = ['fanduel', 'draftkings','espnbet','williamhill_us']
@@ -81,6 +82,7 @@ def check_alt_line(eventId,market_type,sport,my_outcome):
     }
 
     response = requests.get(event_url,params=params)
+    time.sleep(1)
     # Log the status code and response content
     logging.debug(f"Status Code: {response.status_code}")
     logging.debug(f"Response Content: {response.text}")
@@ -252,6 +254,7 @@ def fetch_odds(sport_key):
         "oddsFormat": "american"
     }
     response = requests.get(url, params=params)
+    time.sleep(1)
     if response.status_code == 200:
         games = response.json()
         now = datetime.now(timezone.utc)   
