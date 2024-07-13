@@ -248,11 +248,10 @@ def fetch_odds(sport_key):
     response = requests.get(url, params=params)
     if response.status_code == 200:
         games = response.json()
-        now = datetime.now(timezone.utc)
-        f = open('data/debug/betting_lines.json', 'w')
-        json.dump(games, f)
+        now = datetime.now(timezone.utc)   
         for game in games:
-            if datetime.fromisoformat(game['commence_time'][:-1]).replace(tzinfo=timezone.utc) > now:
+            commence_time =  datetime.fromisoformat(game['commence_time'][:-1]).replace(tzinfo=timezone.utc)
+            if commence_time > now:
                 # Store data if the game has not commenced
                 events_data[game['id']] = {
                     'sport_key': game['sport_key'],
@@ -277,10 +276,6 @@ def fetch_odds(sport_key):
     else:
         raise Exception(f"Failed to retrieve data: {response.status_code} - {response.text}")
     
-    # Remove past events
-    for game_id in list(events_data.keys()):
-        if datetime.fromisoformat(events_data[game_id]['commence_time'][:-1]).replace(tzinfo=timezone.utc) <= now:
-            del events_data[game_id]
     return games 
 # scheduler = BackgroundScheduler()
 # scheduler.add_job(func=fetch_odds, args=['nba-mlb'], trigger="interval", minutes=2)
