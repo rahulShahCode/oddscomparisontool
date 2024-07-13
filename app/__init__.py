@@ -1,12 +1,11 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 from apscheduler.schedulers.background import BackgroundScheduler
 from scripts.get_data import fetch_odds,process_games  # Import your function here
 import json 
 
 app = Flask(__name__)
-data = {}
 def retrieve_data(): 
-    sports = ['baseball_mlb','basketball_wnba', 'americanfootball_cfl', 'tennis_atp_wimbledon']
+    sports = ['baseball_mlb']
     processed_sports = {}
     all_data = {} 
     for sport in sports:
@@ -18,9 +17,10 @@ def retrieve_data():
         json.dump(processed_sports,f)
     with open('data/curr_data.json', 'w') as f : 
         json.dump(all_data, f)
+
 @app.route('/write_dict')
 def write_dict(): 
-    return data 
+    return jsonify(fetch_odds('baseball_mlb')), 200 
 @app.route('/')
 def home():
     sport_key = request.args.get('sport', 'baseball_mlb')
