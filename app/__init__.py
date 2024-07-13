@@ -4,20 +4,23 @@ from scripts.get_data import fetch_odds,process_games  # Import your function he
 import json 
 
 app = Flask(__name__)
-
+data = {}
 def retrieve_data(): 
     sports = ['baseball_mlb','basketball_wnba', 'americanfootball_cfl', 'tennis_atp_wimbledon']
     processed_sports = {}
     all_data = {} 
     for sport in sports:
         curr_data = fetch_odds(sport)
+        data = curr_data 
         processed_games = process_games(curr_data)
         processed_sports[sport] = processed_games
     with open('data/processed_games.json', 'w') as f:
         json.dump(processed_sports,f)
     with open('data/curr_data.json', 'w') as f : 
         json.dump(all_data, f)
-
+@app.route('/write_dict')
+def write_dict(): 
+    return data 
 @app.route('/')
 def home():
     sport_key = request.args.get('sport', 'baseball_mlb')

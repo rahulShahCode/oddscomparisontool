@@ -12,3 +12,4 @@ data/debug/*.json
 *.log
 *.sqlite3
 *.db
+venv 
