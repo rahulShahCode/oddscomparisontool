@@ -1,0 +1,10 @@
+Los Angeles Rams @ Detroit Lions
+	Results with Different Point Values:
+		[FanDuel] : Matthew Stafford [Under 273.5 Pass Yds] @ -110, Pinnacle Matthew Stafford Under 271.5 @ -118	 2.0 1.75%
+		[FanDuel] : Jared Goff [Over 268.5 Pass Yds] @ -110, Pinnacle Jared Goff Over 271.5 @ -117	 3.0 1.54%
+	Results with Same Point Values:
+		[DraftKings] : Demarcus Robinson [Yes Anytime Td] @ 450, Pinnacle Demarcus Robinson Yes @ 259 9.67%
+		[FanDuel] : Demarcus Robinson [Yes Anytime Td] @ 410, Pinnacle Demarcus Robinson Yes @ 259 8.25%
+		[FanDuel] : Kalif Raymond [Over 18.5 Reception Yds] @ -110, Pinnacle Kalif Raymond Over 18.5 @ -153 8.09%
+		[BetMGM] : Kalif Raymond [Over 18.5 Reception Yds] @ -120, Pinnacle Kalif Raymond Over 18.5 @ -153 5.93%
+		[BetMGM] : Demarcus Robinson [Yes Anytime Td] @ 350, Pinnacle Demarcus Robinson Yes @ 259 5.63%

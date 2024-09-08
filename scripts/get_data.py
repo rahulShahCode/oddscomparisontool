@@ -82,6 +82,7 @@ def check_alt_line(eventId,market_type,sport,my_outcome):
     }
 
     response = requests.get(event_url,params=params)
+    quota_used = int(response.headers._store.get('x-requests-last')[1])
     time.sleep(1)
     # Log the status code and response content
     logging.debug(f"Status Code: {response.status_code}")
@@ -93,8 +94,8 @@ def check_alt_line(eventId,market_type,sport,my_outcome):
         my_prob = american_to_probability(int(my_outcome['price']))
         p_prob = american_to_probability(int(matching_alt_line['price']))
         if (p_prob - my_prob) >= 1:
-            return matching_alt_line
-    return None 
+            return matching_alt_line, quota_used 
+    return None,quota_used
 def match_market(market_lst,market_type): 
     for market in market_lst: 
         if market['key'] == market_type:
@@ -149,97 +150,107 @@ def format_point(point, market_type):
         return point  # Return the point as is if it's not a number
 
 def process_games(games):
+    quota_sum = 0 
     processed_games = []
     for game in games:
-        game['commence_time'] = format_datetime(game['commence_time'])
-        game['formatted_markets'] = []
-        my_book_markets = {
-            book: [market for bookmaker in game['bookmakers'] if bookmaker['key'] == book for market in bookmaker['markets']]
-            for book in my_bookmakers
-        }
-        fanduel_markets = [market for bookmaker in game['bookmakers'] if bookmaker['key'] == 'fanduel' for market in bookmaker['markets']]
-        pinnacle_markets = [market for bookmaker in game['bookmakers'] if bookmaker['key'] == 'pinnacle' for market in bookmaker['markets']]
-        
-        for market_key in ['h2h','spreads','totals']:
-            books_for_curr_market = get_markets_by_type(my_book_markets, market_key)
-            pinnacle_data = match_market(pinnacle_markets,market_key)
-            if books_for_curr_market and pinnacle_data:
-                formatted_market = {'type': market_key, 'data': []}
-                best_odds = get_best_odds(books_for_curr_market)
-                for my_outcome, p_outcome in zip(best_odds, pinnacle_data['outcomes']):
-                    my_american = format_american_odds(my_outcome['price'])
-                    p_american = format_american_odds(p_outcome['price'])
-                    my_point = format_point(my_outcome['point'], market_key) if my_outcome['point'] is not None else ''
-                    p_point = format_point(p_outcome.get('point', ''), market_key) if 'point' in p_outcome else ''
-                    my_prob = american_to_probability(int(my_outcome['price']))
-                    p_prob = american_to_probability(int(p_outcome['price']))
-                    # Handle moneyline comparison
-                    if market_key == 'h2h':
-                        if (p_prob - my_prob) >= 1:
-                            formatted_market['data'].append({
-                                'name': my_outcome['name'],
-                                'my_book': my_american,
-                                'pinnacle': p_american,
-                                'my_point': my_point,
-                                'p_point': p_point,
-                                'book_name' : my_outcome['sportsbook']
-                            })
-                    elif market_key == 'totals':
-                        is_over = 'Over' in my_outcome['name']
-                        if (is_over and float(my_point) < float(p_point)) \
-                        or (not is_over and float(my_point) > float(p_point)):
-                            alt_line = check_alt_line(game['id'],'alternate_'+market_key,game['sport_key'], my_outcome)
-                            if alt_line is not None:
+        commence_time = datetime.fromisoformat(game['commence_time'][:-1]).replace(tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)   
+        if commence_time > now: 
+            game['formatted_markets'] = []
+            game['commence_time'] = format_datetime(game['commence_time'])
+            my_book_markets = {
+                book: [market for bookmaker in game['bookmakers'] if bookmaker['key'] == book for market in bookmaker['markets']]
+                for book in my_bookmakers
+            }
+            pinnacle_markets = [market for bookmaker in game['bookmakers'] if bookmaker['key'] == 'pinnacle' for market in bookmaker['markets']]
+            
+            for market_key in ['h2h','spreads','totals']:
+                books_for_curr_market = get_markets_by_type(my_book_markets, market_key)
+                pinnacle_data = match_market(pinnacle_markets,market_key)
+                if books_for_curr_market and pinnacle_data:
+                    formatted_market = {'type': market_key, 'data': []}
+                    best_odds = get_best_odds(books_for_curr_market)
+                    for my_outcome, p_outcome in zip(best_odds, pinnacle_data['outcomes']):
+                        my_american = format_american_odds(my_outcome['price'])
+                        p_american = format_american_odds(p_outcome['price'])
+                        my_point = format_point(my_outcome['point'], market_key) if my_outcome['point'] is not None else ''
+                        p_point = format_point(p_outcome.get('point', ''), market_key) if 'point' in p_outcome else ''
+                        my_prob = american_to_probability(int(my_outcome['price']))
+                        p_prob = american_to_probability(int(p_outcome['price']))
+                        pct_edge = round(p_prob - my_prob,2) 
+                        # Handle moneyline comparison
+                        if market_key == 'h2h':
+                            if pct_edge >= 1:
                                 formatted_market['data'].append({
                                     'name': my_outcome['name'],
                                     'my_book': my_american,
-                                    'pinnacle': alt_line['price'],
+                                    'pinnacle': p_american,
                                     'my_point': my_point,
-                                    'p_point': alt_line['point'],
-                                    'book_name' : my_outcome['sportsbook']
+                                    'p_point': p_point,
+                                    'book_name' : my_outcome['sportsbook'],
+                                    'pct_edge' : pct_edge
                                 })
-                        elif (float(my_point) == float(p_point) and (p_prob - my_prob) >= 1):
-                            formatted_market['data'].append({
-                                'name': my_outcome['name'],
-                                'my_book': my_american,
-                                'pinnacle': p_american,
-                                'my_point': my_point,
-                                'p_point': p_point,
-                                'book_name' : my_outcome['sportsbook']
-                            })
-                    elif market_key == 'spreads':
-                        if (float(my_point) != float(p_point)):
-                            alt_line = check_alt_line(game['id'],'alternate_'+market_key,game['sport_key'], my_outcome)
-                            if alt_line is not None: 
+                        elif market_key == 'totals':
+                            is_over = 'Over' in my_outcome['name']
+                            if (is_over and float(my_point) < float(p_point)) \
+                            or (not is_over and float(my_point) > float(p_point)):
+                                alt_line, quota_last_used = check_alt_line(game['id'],'alternate_'+market_key,game['sport_key'], my_outcome)
+                                quota_sum += quota_last_used
+                                if alt_line is not None:
+                                    pct_edge = round(american_to_probability(int(alt_line['price'])) - my_prob,2)
+                                    formatted_market['data'].append({
+                                        'name': my_outcome['name'],
+                                        'my_book': my_american,
+                                        'pinnacle': alt_line['price'],
+                                        'my_point': my_point,
+                                        'p_point': alt_line['point'],
+                                        'book_name' : my_outcome['sportsbook'],
+                                        'pct_edge' : pct_edge 
+                                    })
+                            elif (float(my_point) == float(p_point) and pct_edge >= 1):
                                 formatted_market['data'].append({
                                     'name': my_outcome['name'],
                                     'my_book': my_american,
-                                    'pinnacle': alt_line['price'],
+                                    'pinnacle': p_american,
                                     'my_point': my_point,
-                                    'p_point': alt_line['point'],
-                                    'book_name' : my_outcome['sportsbook']
+                                    'p_point': p_point,
+                                    'book_name' : my_outcome['sportsbook'],
+                                    'pct_edge' : pct_edge
                                 })
-                        elif(float(my_point) == float(p_point) and (p_prob - my_prob) >= 1): 
-                            formatted_market['data'].append({
-                                'name': my_outcome['name'],
-                                'my_book': my_american,
-                                'pinnacle': p_american,
-                                'my_point': my_point,
-                                'p_point': p_point,
-                                'book_name' : my_outcome['sportsbook']
-                            })
+                        elif market_key == 'spreads':
+                            if (float(my_point) != float(p_point)):
+                                alt_line, quota_last_used = check_alt_line(game['id'],'alternate_'+market_key,game['sport_key'], my_outcome)
+                                quota_sum += quota_last_used
+                                if alt_line is not None: 
+                                    pct_edge = round(american_to_probability(int(alt_line['price'])) - my_prob,2)
+                                    formatted_market['data'].append({
+                                        'name': my_outcome['name'],
+                                        'my_book': my_american,
+                                        'pinnacle': alt_line['price'],
+                                        'my_point': my_point,
+                                        'p_point': alt_line['point'],
+                                        'book_name' : my_outcome['sportsbook'],
+                                        'pct_edge' : pct_edge
+                                    })
+                            elif(float(my_point) == float(p_point) and pct_edge >= 1): 
+                                formatted_market['data'].append({
+                                    'name': my_outcome['name'],
+                                    'my_book': my_american,
+                                    'pinnacle': p_american,
+                                    'my_point': my_point,
+                                    'p_point': p_point,
+                                    'book_name' : my_outcome['sportsbook'],
+                                    'pct_edge' : pct_edge
+                                })
 
-                if formatted_market['data']:
-                    game['formatted_markets'].append(formatted_market)
+                    if formatted_market['data']:
+                        game['formatted_markets'].append(formatted_market)
 
-        if game['formatted_markets']:
-            processed_games.append(game)
+            if game['formatted_markets']:
+                processed_games.append(game)
 
-    return processed_games
+    return processed_games, quota_sum
 
-
-# Scheduler and data storage setup
-events_data = {}
 
 def fetch_odds(sport_key):
     api_key = os.getenv('THE_ODDS_API_KEY')
@@ -254,39 +265,16 @@ def fetch_odds(sport_key):
         "oddsFormat": "american"
     }
     response = requests.get(url, params=params)
+    quota_used = int(response.headers._store.get('x-requests-last')[1])
     time.sleep(1)
     if response.status_code == 200:
         games = response.json()
-        now = datetime.now(timezone.utc)   
-        for game in games:
-            commence_time =  datetime.fromisoformat(game['commence_time'][:-1]).replace(tzinfo=timezone.utc)
-            if commence_time > now:
-                # Store data if the game has not commenced
-                events_data[game['id']] = {
-                    'sport_key': game['sport_key'],
-                    'commence_time': game['commence_time'],
-                    'bookmakers': {}
-                }
-                for bookmaker in game['bookmakers']:
-                    events_data[game['id']]['bookmakers'][bookmaker['key']] = {
-                        'last_update': bookmaker['last_update'],
-                        'markets': {}
-                    }
-                    for market in bookmaker['markets']:
-                        events_data[game['id']]['bookmakers'][bookmaker['key']]['markets'][market['key']] = {
-                            'outcomes': []
-                        }
-                        for outcome in market['outcomes']:
-                            events_data[game['id']]['bookmakers'][bookmaker['key']]['markets'][market['key']]['outcomes'].append({
-                                'name': outcome['name'],
-                                'price': outcome['price'],
-                                'point': outcome.get('point')
-                            })
     else:
         raise Exception(f"Failed to retrieve data: {response.status_code} - {response.text}")
     
-    return games 
-# scheduler = BackgroundScheduler()
-# scheduler.add_job(func=fetch_odds, args=['nba-mlb'], trigger="interval", minutes=2)
-# scheduler.start()
-# atexit.register(lambda: scheduler.shutdown())
+    # Filter out games that have already commenced using list comprehension
+    current_time = datetime.now(timezone.utc)
+    filtered_games = [game for game in games if datetime.strptime(game['commence_time'], "%Y-%m-%dT%H:%M:%S%z") > current_time]
+    with open('data/curr_data.json', 'w') as f: 
+       json.dump(games,f)
+    return filtered_games, quota_used

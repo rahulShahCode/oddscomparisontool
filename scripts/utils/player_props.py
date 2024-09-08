@@ -4,11 +4,11 @@ from datetime import datetime
 import pytz
 import os 
 
-my_bookmakers = ['fanduel', 'draftkings','betmgm','fliff','williamhill_us','pinnacle']
+my_bookmakers = ['fanduel', 'draftkings','betmgm','williamhill_us','pinnacle']
 
 api_key = os.getenv('THE_ODDS_API_KEY')
-sports = ['baseball_mlb']
-markets = [ 'pitcher_strikeouts', 'batter_total_bases']
+sports = ['americanfootball_nfl']
+markets = ['player_anytime_td','player_pass_tds', 'player_pass_yds', 'player_pass_completions', 'player_pass_attempts', 'player_pass_interceptions', 'player_rush_yds', 'player_rush_attempts', 'player_receptions', 'player_reception_yds']
 # Function to convert UTC to EDT 
 def convert_utc_to_edt(utc_time_str):
     # Create a datetime object from the UTC time string
@@ -61,7 +61,20 @@ def american_to_implied(odds):
         return 100 / (odds + 100)
     else:
         return abs(odds) / (abs(odds) + 100)
-
+    
+def transform_string(input_str):
+    # Split the input string by underscores
+    parts = input_str.split('_')
+    
+    # Remove the first word and capitalize the second word
+    if len(parts) > 1:
+        transformed_str = parts[1].capitalize()
+    
+    # Capitalize the remaining words and join them with spaces
+    if len(parts) > 2:
+        transformed_str += ' ' + ' '.join([word.capitalize() for word in parts[2:]])
+    
+    return transformed_str
 def find_favorable_lines(props):
     results_with_different_points = []
     results_with_same_points = []
@@ -71,15 +84,7 @@ def find_favorable_lines(props):
     if not pinnacle_data:
         return None 
 
-    # Define a simple mapping from market keys to bet types
-    bet_type_mapping = {
-        'player_points': 'Points',
-        'player_assists': 'Assists',
-        'player_rebounds': 'Rebounds',
-        'player_threes': 'Threes',
-        'pitcher_strikeouts' : 'Strikeouts',
-        'batter_total_bases' : 'Bases'
-    }
+
 
     for bookmaker in bookmakers:
         if bookmaker['key'] == 'pinnacle':
@@ -90,7 +95,7 @@ def find_favorable_lines(props):
             if not pinnacle_market:
                 continue  # No corresponding market in Pinnacle for comparison
 
-            bet_type = bet_type_mapping.get(market['key'], 'Unknown')  # Get the human-readable bet type
+            bet_type = transform_string(market['key'])  # Get the human-readable bet type
 
             for outcome in market['outcomes']:
                 pin_outcome = next((o for o in pinnacle_market['outcomes']
@@ -103,29 +108,44 @@ def find_favorable_lines(props):
                 other_prob = american_to_implied(outcome['price'])
                 prob_delta = (pin_prob - other_prob) * 100
 
+                point_delta = None 
+                has_point_val = 'point' in outcome 
+                if outcome['name'] == 'Over' and has_point_val:
+                    point_delta = pin_outcome['point'] - outcome['point']
+                elif has_point_val: 
+                    point_delta = outcome['point'] - pin_outcome['point']
                 # Prepare result entry
                 result_entry = {
                     "source": bookmaker['title'],
                     "player": outcome['description'],
                     "type": outcome['name'],
-                    "point": outcome['point'],
                     "bet_type": bet_type,
                     "odds": outcome['price'],
-                    "pinnacle": f"{pin_outcome['description']} {pin_outcome['name']} {pin_outcome['point']} @ {pin_outcome['price']}",
                     "delta": prob_delta
                 }
 
+                if has_point_val:
+                    result_entry['point'] = outcome['point']
+                    result_entry['pinnacle'] = f"{pin_outcome['description']} {pin_outcome['name']} {pin_outcome['point']} @ {pin_outcome['price']}"
+                else: 
+                    result_entry['pinnacle'] = f"{pin_outcome['description']} {pin_outcome['name']} @ {pin_outcome['price']}"
+                # Add point_delta only if it's not None
+                if point_delta is not None:
+                    result_entry["point_delta"] = point_delta
+
                 # Determine if the line is more favorable
-                if ((outcome['name'] == "Over" and outcome['point'] < pin_outcome['point']) or \
+                if not has_point_val and prob_delta >= 5: 
+                    results_with_same_points.append(result_entry)
+                elif has_point_val and ((outcome['name'] == "Over" and outcome['point'] < pin_outcome['point']) or \
                    (outcome['name'] == "Under" and outcome['point'] > pin_outcome['point'])) and \
-                    pin_prob >= .5 and abs(prob_delta) <= 6:
+                    pin_prob >= .5 and (point_delta > 2 or prob_delta >= 1):
                     results_with_different_points.append(result_entry)
-                elif outcome['point'] == pin_outcome['point'] and prob_delta > 5:
+                elif has_point_val and outcome['point'] == pin_outcome['point'] and prob_delta > 5:
                     results_with_same_points.append(result_entry)
 
     # Sort results by most favorable probability difference and then by point value criteria
-    results_with_different_points.sort(key=lambda x: abs(x['delta']), reverse=True)
-    results_with_same_points.sort(key=lambda x: abs(x['delta']), reverse=True)
+    results_with_different_points.sort(key=lambda x: x['delta'], reverse=True)
+    results_with_same_points.sort(key=lambda x: x['delta'], reverse=True)
 
     return [results_with_different_points, results_with_same_points]
 
@@ -145,19 +165,22 @@ def main():
         first_iteration = True 
         if results is not None and (len(results[0]) != 0 or len(results[1]) != 0):
             print('{} @ {}'.format(props['away_team'], props['home_team']))
-            for result in results: 
-                if first_iteration: 
-                    first_iteration = False 
-                    if len(result) != 0:
-                        print("\tResults with Different Point Values:")
-                        for r in result:
-                            print(f"\t\t[{r['source']}] : {r['player']} [{r['type']} {r['point']} {r['bet_type']}] @ {r['odds']}, Pinnacle {r['pinnacle']} {r['delta']:.2f}%")
-                else: 
-                    if len(result) != 0: 
-                        print("\tResults with Same Point Values:")
-                        for r in result:
-                            print(f"\t\t[{r['source']}] : {r['player']} [{r['type']} {r['point']} {r['bet_type']}] @ {r['odds']}, Pinnacle {r['pinnacle']} {r['delta']:.2f}%")
-                
+        for result in results: 
+            if first_iteration: 
+                first_iteration = False 
+                if len(result) != 0:
+                    print("\tResults with Different Point Values:")
+                    for r in result:
+                        # Conditionally include 'point' in the print statement
+                        point_info = f" {r['point']}" if 'point' in r and r['point'] is not None else ""
+                        print(f"\t\t[{r['source']}] : {r['player']} [{r['type']}{point_info} {r['bet_type']}] @ {r['odds']}, Pinnacle {r['pinnacle']}\t {r.get('point_delta', '')} {r['delta']:.2f}%")
+            else: 
+                if len(result) != 0: 
+                    print("\tResults with Same Point Values:")
+                    for r in result:
+                        # Conditionally include 'point' in the print statement
+                        point_info = f" {r['point']}" if 'point' in r and r['point'] is not None else ""
+                        print(f"\t\t[{r['source']}] : {r['player']} [{r['type']}{point_info} {r['bet_type']}] @ {r['odds']}, Pinnacle {r['pinnacle']} {r['delta']:.2f}%")
 
 
 

@@ -18,30 +18,38 @@
                 <span class="slider"></span>
             </label>
         </div>
+        <div class="last-updated">
+            Last Updated: {{ last_updated }}
+        </div>
         <ul class="nav nav-tabs">
             <li class="nav-item">
                 <a class="nav-link {{ 'active' if sport == 'baseball_mlb' else '' }}"
                     href="/?sport=baseball_mlb">MLB</a>
             </li>
             <li class="nav-item">
+                <a class="nav-link {{ 'active' if sport == 'americanfootball_nfl' else '' }}"
+                    href="/?sport=americanfootball_nfl">NFL</a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link {{ 'active' if sport == 'basketball_wnba' else '' }}"
                     href="/?sport=basketball_wnba">WNBA</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {{ 'active' if sport == 'americanfootball_cfl' else '' }}"
-                    href="/?sport=americanfootball_cfl">CFL</a>
+                <a class="nav-link {{ 'active' if sport == 'americanfootball_ncaaf' else '' }}"
+                    href="/?sport=americanfootball_ncaaf">NCAAF</a>
             </li>
             <li class="nav-item">
                 <a class="nav-link {{ 'active' if sport == 'mma_mixed_martial_arts' else '' }}"
                     href="/?sport=mma_mixed_martial_arts">MMA</a>
             </li>
+            
             <li class="nav-item">
-                <a class="nav-link {{ 'active' if sport == 'boxing_boxing' else '' }}"
-                    href="/?sport=boxing_boxing">Boxing</a>
+                <a class="nav-link {{ 'active' if sport == 'tennis_atp_us_open' else '' }}"
+                    href="/?sport=tennis_atp_us_open">Men's Tennis</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {{ 'active' if sport == 'soccer_usa_mls' else '' }}"
-                    href="/?sport=soccer_usa_mls">MLS</a>
+                <a class="nav-link {{ 'active' if sport == 'tennis_wta_us_open' else '' }}"
+                    href="/?sport=tennis_wta_us_open">Women's Tennis</a>
             </li>
 
             <li class="nav-item dropdown">
@@ -95,6 +103,9 @@
                             <div class="col-md-6">
                                 <span>{{ data.name }} {{ data.p_point }}: {{ data.pinnacle }}</span>
                                 <img src="static/img/pinnacle_logo.jpg"  class="book_logo" alt="Pinnacle Logo" height="20">
+                            </div>
+                            <div class="col-md-6">
+                                <span>{{ data.pct_edge }}</span>
                             </div>
                         </div>
                         {% endfor %}
