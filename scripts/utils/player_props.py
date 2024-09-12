@@ -3,12 +3,13 @@ import json
 from datetime import datetime
 import pytz
 import os 
+import pandas as pd 
 
-my_bookmakers = ['fanduel', 'draftkings','betmgm','williamhill_us','pinnacle']
-
+my_bookmakers = ['fanduel', 'draftkings','espnbet','williamhill_us','pinnacle']
+ATD_DELTA = 5
 api_key = os.getenv('THE_ODDS_API_KEY')
 sports = ['americanfootball_nfl']
-markets = ['player_anytime_td','player_pass_tds', 'player_pass_yds', 'player_pass_completions', 'player_pass_attempts', 'player_pass_interceptions', 'player_rush_yds', 'player_rush_attempts', 'player_receptions', 'player_reception_yds']
+markets = ['player_anytime_td','player_pass_tds', 'player_pass_yds', 'player_pass_completions', 'player_pass_attempts', 'player_pass_interceptions', 'player_rush_yds', 'player_rush_attempts', 'player_receptions', 'player_reception_yds', 'player_1st_td', 'player_reception_longest', 'player_rush_longest', 'player_pass_longest_completion']
 # Function to convert UTC to EDT 
 def convert_utc_to_edt(utc_time_str):
     # Create a datetime object from the UTC time string
@@ -75,7 +76,7 @@ def transform_string(input_str):
         transformed_str += ' ' + ' '.join([word.capitalize() for word in parts[2:]])
     
     return transformed_str
-def find_favorable_lines(props):
+def find_favorable_lines(props, event_name : str, commence_time : str):
     results_with_different_points = []
     results_with_same_points = []
     bookmakers = props['bookmakers']
@@ -83,9 +84,7 @@ def find_favorable_lines(props):
     
     if not pinnacle_data:
         return None 
-
-
-
+    
     for bookmaker in bookmakers:
         if bookmaker['key'] == 'pinnacle':
             continue  # Skip Pinnacle for comparison purposes
@@ -116,6 +115,8 @@ def find_favorable_lines(props):
                     point_delta = outcome['point'] - pin_outcome['point']
                 # Prepare result entry
                 result_entry = {
+                    "commence_time" : commence_time,
+                    "event_name" : event_name,
                     "source": bookmaker['title'],
                     "player": outcome['description'],
                     "type": outcome['name'],
@@ -134,11 +135,11 @@ def find_favorable_lines(props):
                     result_entry["point_delta"] = point_delta
 
                 # Determine if the line is more favorable
-                if not has_point_val and prob_delta >= 5: 
+                if not has_point_val and prob_delta >= ATD_DELTA and pin_outcome['price'] <=300: 
                     results_with_same_points.append(result_entry)
                 elif has_point_val and ((outcome['name'] == "Over" and outcome['point'] < pin_outcome['point']) or \
                    (outcome['name'] == "Under" and outcome['point'] > pin_outcome['point'])) and \
-                    pin_prob >= .5 and (point_delta > 2 or prob_delta >= 1):
+                    pin_prob >= .5 and (point_delta > 2 or prob_delta >= 2):
                     results_with_different_points.append(result_entry)
                 elif has_point_val and outcome['point'] == pin_outcome['point'] and prob_delta > 5:
                     results_with_same_points.append(result_entry)
@@ -149,40 +150,131 @@ def find_favorable_lines(props):
 
     return [results_with_different_points, results_with_same_points]
 
+def output_to_html(diff_pts : list, same_pts : list):
+    df_diff_pts = pd.DataFrame(diff_pts)
+    df_same_pts = pd.DataFrame(same_pts)
+    col_names = {
+        'commence_time' : 'Start Time', 
+        'event_name' : 'Event',
+        'source' : 'Book',
+        'player' : 'Player',
+        'type' : 'Outcome',
+        'point' : 'Point',
+        'bet_type' : 'Prop',
+        'odds' : 'Odds',
+        'pinnacle' : 'Pinnacle Odds',
+        'delta' : 'Odds % Delta',
+        'point_delta' : 'Point Delta'
+    }
+    # Data Cleaning 
+    df_diff_pts = df_diff_pts.rename(columns=col_names)
+    df_diff_pts = df_diff_pts[list(col_names.values())]
+
+    df_same_pts = df_same_pts.rename(columns=col_names)
+    df_same_pts = df_same_pts[list(col_names.values())]
+    df_same_pts = df_same_pts.drop(columns=['Point Delta'], errors='ignore')
+
+    df_diff_pts['Start Time'] = pd.to_datetime(df_diff_pts['Start Time'])
+    df_same_pts['Start Time'] = pd.to_datetime(df_same_pts['Start Time'])
+    # Update delta to percentage val
+    df_diff_pts['Odds % Delta'] = df_diff_pts['Odds % Delta'].apply(lambda x: f"{round(x, 2)}%")
+    df_same_pts['Odds % Delta'] = df_same_pts['Odds % Delta'].apply(lambda x: f"{round(x, 2)}%")
+
+    diff_pts_html = df_diff_pts.to_html(index=False,classes='table table-striped table-bordered diff-pts-table')
+    same_pts_html = df_same_pts.to_html(index=False,classes='table table-striped table-bordered same-pts-table')
+
+    bootstrap_css = """
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <script>
+    $(document).ready(function() {
+        $('.diff-pts-table').DataTable();
+        $('.same-pts-table').DataTable();
+    });
+    </script>
+    <style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background-color: #f9f9f9;
+    }
+    h2 {
+        color: #4A90E2;
+        font-family: 'Trebuchet MS', sans-serif;
+        text-align: center;
+        font-size: 1.5em;
+        margin-top: 20px;
+    }
+    .container {
+        width: 80%;
+        margin: auto;
+        padding: 20px;
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    .table {
+        margin: 20px 0;
+        width: 100%;
+    }
+    </style>
+    """
+
+    html_content = f"""
+    {bootstrap_css}
+    <div class='container'>
+        <h2>Diff Points</h2>
+        {diff_pts_html}
+        <h2>Same Points</h2>
+        {same_pts_html}
+    </div>
+    """
+
+    # Write HTML to a file
+    with open("player_props_tables.html", "w") as file:
+        file.write(html_content)
+
+    print("HTML file with combined bets has been saved as 'player_props_tables.html'")
 
 
 def main(): 
     sport = sports[0]
     events = get_events(sport)
-    today_events = get_todays_events(events)
-    with open('data/debug/events.json', 'w') as f:
-        json.dump(events, f)
+    today_events = events
+    # today_events = get_todays_events(events)
+    diff_pts = [] 
+    same_pts = []
     for event in today_events: 
         props = fetch_props(event['id'], event['sport_key'])
-        with open('data/debug/player_props.json', 'w') as f:
-            json.dump(props, f)
-        results = find_favorable_lines(props)  # Process the data
-        first_iteration = True 
-        if results is not None and (len(results[0]) != 0 or len(results[1]) != 0):
-            print('{} @ {}'.format(props['away_team'], props['home_team']))
-        for result in results: 
-            if first_iteration: 
-                first_iteration = False 
-                if len(result) != 0:
-                    print("\tResults with Different Point Values:")
-                    for r in result:
-                        # Conditionally include 'point' in the print statement
-                        point_info = f" {r['point']}" if 'point' in r and r['point'] is not None else ""
-                        print(f"\t\t[{r['source']}] : {r['player']} [{r['type']}{point_info} {r['bet_type']}] @ {r['odds']}, Pinnacle {r['pinnacle']}\t {r.get('point_delta', '')} {r['delta']:.2f}%")
-            else: 
-                if len(result) != 0: 
-                    print("\tResults with Same Point Values:")
-                    for r in result:
-                        # Conditionally include 'point' in the print statement
-                        point_info = f" {r['point']}" if 'point' in r and r['point'] is not None else ""
-                        print(f"\t\t[{r['source']}] : {r['player']} [{r['type']}{point_info} {r['bet_type']}] @ {r['odds']}, Pinnacle {r['pinnacle']} {r['delta']:.2f}%")
-
-
-
+        # with open('data/debug/player_props.json', 'w') as f:
+        #     json.dump(props, f)
+        event_name = f"{event['away_team']} @ {event['home_team']}"
+        results = find_favorable_lines(props, event_name, event['commence_time_edt'])  # Process the data
+        if results and results[0]:
+            diff_pts.extend(results[0])
+        if results and results[1]:
+            same_pts.extend(results[1])
+        # first_iteration = True 
+        # if results is not None and (len(results[0]) != 0 or len(results[1]) != 0):
+        #     print('{} @ {}'.format(props['away_team'], props['home_team']))
+            # for result in results: 
+            #     if first_iteration: 
+            #         first_iteration = False 
+            #         if len(result) != 0:
+            #             print("\tResults with Different Point Values:")
+            #             for r in result:
+            #                 # Conditionally include 'point' in the print statement
+            #                 point_info = f" {r['point']}" if 'point' in r and r['point'] is not None else ""
+            #                 print(f"\t\t[{r['source']}] : {r['player']} [{r['type']}{point_info} {r['bet_type']}] @ {r['odds']}, Pinnacle {r['pinnacle']}\t {r.get('point_delta', '')} {r['delta']:.2f}%")
+            #     else: 
+            #         if len(result) != 0: 
+            #             print("\tResults with Same Point Values:")
+            #             for r in result:
+            #                 # Conditionally include 'point' in the print statement
+            #                 point_info = f" {r['point']}" if 'point' in r and r['point'] is not None else ""
+            #                 print(f"\t\t[{r['source']}] : {r['player']} [{r['type']}{point_info} {r['bet_type']}] @ {r['odds']}, Pinnacle {r['pinnacle']} {r['delta']:.2f}%")
+    output_to_html(diff_pts,same_pts)
 
 main() 

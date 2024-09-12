@@ -7,7 +7,7 @@ from datetime import datetime
 app = Flask(__name__)
 def retrieve_data(): 
     quota = 0
-    sports = ['americanfootball_nfl']
+    sports = ['baseball_mlb','americanfootball_nfl', 'basketball_wnba']
     processed_sports = {}
     for sport in sports:
         curr_data, quota_last_used = fetch_odds(sport)
