@@ -7,7 +7,8 @@ from datetime import datetime
 app = Flask(__name__)
 def retrieve_data(): 
     quota = 0
-    sports = ['baseball_mlb','americanfootball_nfl', 'basketball_wnba']
+    sports = ['baseball_mlb']
+#   sports = sports + (['baseball_kbo', 'baseball_npb'])
     processed_sports = {}
     for sport in sports:
         curr_data, quota_last_used = fetch_odds(sport)
@@ -29,9 +30,13 @@ def home():
         print("Loading from file")
         processed_games = data[sport_key]
     else: 
-        games = fetch_odds(sport_key)
-        processed_games = process_games(games)
+        quota = 0 
+        games, quota_last_used = fetch_odds(sport_key)
+        quota += quota_last_used
+        processed_games, quota_last_used = process_games(games)
+        quota += quota_last_used
         print("Fetched odds")
+        print("Last used quota: " + str(quota))
     return render_template('odds.html', games=processed_games, sport=sport_key, last_updated=data['last_update'])
 
 
@@ -39,6 +44,6 @@ def home():
 retrieve_data()
 
 # Setup scheduler
-scheduler = BackgroundScheduler()
-scheduler.add_job(func=retrieve_data, trigger="interval", minutes=20)
-scheduler.start()
+# scheduler = BackgroundScheduler()
+# scheduler.add_job(func=retrieve_data, trigger="interval", minutes=20)
+# scheduler.start()

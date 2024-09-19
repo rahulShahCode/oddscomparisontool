@@ -4,12 +4,16 @@ from datetime import datetime
 import pytz
 import os 
 import pandas as pd 
-
+import sqlite3
+from datetime import datetime 
+import pytz 
 my_bookmakers = ['fanduel', 'draftkings','espnbet','williamhill_us','pinnacle']
-ATD_DELTA = 5
+ATD_DELTA = 2.5
 api_key = os.getenv('THE_ODDS_API_KEY')
 sports = ['americanfootball_nfl']
-markets = ['player_anytime_td','player_pass_tds', 'player_pass_yds', 'player_pass_completions', 'player_pass_attempts', 'player_pass_interceptions', 'player_rush_yds', 'player_rush_attempts', 'player_receptions', 'player_reception_yds', 'player_1st_td', 'player_reception_longest', 'player_rush_longest', 'player_pass_longest_completion']
+markets = ['player_anytime_td','player_pass_tds', 'player_pass_yds', 'player_pass_completions', 'player_pass_attempts', 'player_pass_interceptions', 
+           'player_rush_yds', 'player_rush_attempts', 'player_receptions', 'player_reception_yds']
+
 # Function to convert UTC to EDT 
 def convert_utc_to_edt(utc_time_str):
     # Create a datetime object from the UTC time string
@@ -139,7 +143,7 @@ def find_favorable_lines(props, event_name : str, commence_time : str):
                     results_with_same_points.append(result_entry)
                 elif has_point_val and ((outcome['name'] == "Over" and outcome['point'] < pin_outcome['point']) or \
                    (outcome['name'] == "Under" and outcome['point'] > pin_outcome['point'])) and \
-                    pin_prob >= .5 and (point_delta > 2 or prob_delta >= 2):
+                    pin_prob >= .5 and (point_delta >= 1 or prob_delta >= 2):
                     results_with_different_points.append(result_entry)
                 elif has_point_val and outcome['point'] == pin_outcome['point'] and prob_delta > 5:
                     results_with_same_points.append(result_entry)
@@ -167,18 +171,24 @@ def output_to_html(diff_pts : list, same_pts : list):
         'point_delta' : 'Point Delta'
     }
     # Data Cleaning 
-    df_diff_pts = df_diff_pts.rename(columns=col_names)
-    df_diff_pts = df_diff_pts[list(col_names.values())]
+    if not df_diff_pts.empty:
+        df_diff_pts = df_diff_pts.rename(columns=col_names)
+        df_diff_pts = df_diff_pts[list(col_names.values())]
+        df_diff_pts['Start Time'] = pd.to_datetime(df_diff_pts['Start Time'])
+        df_diff_pts['Odds % Delta'] = df_diff_pts['Odds % Delta'].apply(lambda x: f"{round(x, 2)}%")
 
-    df_same_pts = df_same_pts.rename(columns=col_names)
-    df_same_pts = df_same_pts[list(col_names.values())]
-    df_same_pts = df_same_pts.drop(columns=['Point Delta'], errors='ignore')
 
-    df_diff_pts['Start Time'] = pd.to_datetime(df_diff_pts['Start Time'])
-    df_same_pts['Start Time'] = pd.to_datetime(df_same_pts['Start Time'])
-    # Update delta to percentage val
-    df_diff_pts['Odds % Delta'] = df_diff_pts['Odds % Delta'].apply(lambda x: f"{round(x, 2)}%")
-    df_same_pts['Odds % Delta'] = df_same_pts['Odds % Delta'].apply(lambda x: f"{round(x, 2)}%")
+
+    if not df_same_pts.empty:
+        df_same_pts = df_same_pts.rename(columns=col_names)
+        # Ensure all columns in col_names.values() exist in the dataframe
+        for col in col_names.values():
+            if col not in df_same_pts.columns:
+                df_same_pts[col] = None  # or a default value like 0 or np.nan
+        df_same_pts = df_same_pts[list(col_names.values())]
+        df_same_pts = df_same_pts.drop(columns=['Point Delta'], errors='ignore')
+        df_same_pts['Start Time'] = pd.to_datetime(df_same_pts['Start Time'])
+        df_same_pts['Odds % Delta'] = df_same_pts['Odds % Delta'].apply(lambda x: f"{round(x, 2)}%")
 
     diff_pts_html = df_diff_pts.to_html(index=False,classes='table table-striped table-bordered diff-pts-table')
     same_pts_html = df_same_pts.to_html(index=False,classes='table table-striped table-bordered same-pts-table')
@@ -189,10 +199,15 @@ def output_to_html(diff_pts : list, same_pts : list):
     <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
     <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
     <script>
-    $(document).ready(function() {
-        $('.diff-pts-table').DataTable();
-        $('.same-pts-table').DataTable();
-    });
+        $(document).ready(function() {
+            if ($('.diff-pts-table thead tr th').length) {
+                $('.diff-pts-table').DataTable();
+            }
+            
+            if ($('.same-pts-table thead tr th').length) {
+                $('.same-pts-table').DataTable();
+            }
+        });
     </script>
     <style>
     body {
@@ -239,17 +254,42 @@ def output_to_html(diff_pts : list, same_pts : list):
     print("HTML file with combined bets has been saved as 'player_props_tables.html'")
 
 
+def store_props(props): 
+    conn = sqlite3.connect('odds.db')
+    c = conn.cursor()
+
+    bookmakers = props['bookmakers']
+    commence_time = convert_utc_to_edt(props['commence_time'])
+    event_name = f"{props['away_team']} @ {props['home_team']}"
+    sport_key = props['sport_key']
+    event_id = props['id']
+
+    markets = next((p['markets'] for p in bookmakers if p['key'] == 'pinnacle'), None) 
+    if markets is not None: 
+        for m in markets: 
+            market_type = m['key']
+            last_update = convert_utc_to_edt(m['last_update'])
+            for o in m['outcomes']:
+                player_name = o['description']
+                outcome_type = o['name']
+                odds = o['price']
+                point_value = o.get('point', 0)
+                c.execute('INSERT OR REPLACE INTO player_props VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 
+                        (event_id,event_name,sport_key,market_type,outcome_type,player_name,point_value, odds, commence_time,last_update))
+        conn.commit()
+        conn.close()                             
+
 def main(): 
     sport = sports[0]
     events = get_events(sport)
-    today_events = events
-    # today_events = get_todays_events(events)
+    today_events = events 
     diff_pts = [] 
     same_pts = []
     for event in today_events: 
         props = fetch_props(event['id'], event['sport_key'])
         # with open('data/debug/player_props.json', 'w') as f:
         #     json.dump(props, f)
+        store_props(props)
         event_name = f"{event['away_team']} @ {event['home_team']}"
         results = find_favorable_lines(props, event_name, event['commence_time_edt'])  # Process the data
         if results and results[0]:

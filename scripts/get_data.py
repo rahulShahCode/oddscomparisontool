@@ -7,7 +7,8 @@ import time
 
 
 my_bookmakers = ['fanduel', 'draftkings','espnbet','williamhill_us']
-sharp_bookmakers = ['pinnacle']
+sharp_bookmakers = ['pinnacle', 'lowvig']
+request_counter = 0
 
 def get_best_odds(books): 
     market_type = list(books.values())[0]['key']
@@ -65,7 +66,13 @@ def get_best_odds(books):
     
     return best_odds
 
-
+def beats_lowvig(lv_odds : dict, my_book_odds : dict, market_key : str):
+    if market_key == 'h2h':
+        pass 
+    elif market_key == 'totals':
+        pass 
+    elif market_key == 'spreads': 
+        pass 
 def find_matching_outcome(outcomes, target): 
     for outcome in outcomes:
         if outcome['name'] == target['name'] and outcome['point'] == target['point']:
@@ -73,6 +80,7 @@ def find_matching_outcome(outcomes, target):
     return None
 
 def check_alt_line(eventId,market_type,sport,my_outcome):
+    global request_counter
     event_url = f'https://api.the-odds-api.com/v4/sports/{sport}/events/{eventId}/odds'
     params = {
         "apiKey" : os.getenv('THE_ODDS_API_KEY'),
@@ -80,10 +88,12 @@ def check_alt_line(eventId,market_type,sport,my_outcome):
         "markets" : market_type,
         "oddsFormat" : "american"
     }
-
+    if (request_counter >= 30):
+        request_counter = 0
+        time.sleep(1)
     response = requests.get(event_url,params=params)
+    request_counter += 1 
     quota_used = int(response.headers._store.get('x-requests-last')[1])
-    time.sleep(1)
     # Log the status code and response content
     logging.debug(f"Status Code: {response.status_code}")
     logging.debug(f"Response Content: {response.text}")
@@ -163,19 +173,34 @@ def process_games(games):
                 for book in my_bookmakers
             }
             pinnacle_markets = [market for bookmaker in game['bookmakers'] if bookmaker['key'] == 'pinnacle' for market in bookmaker['markets']]
-            
+            lowvig_markets = [market for bookmaker in game['bookmakers'] if bookmaker['key'] == 'lowvig' for market in bookmaker['markets']]
             for market_key in ['h2h','spreads','totals']:
                 books_for_curr_market = get_markets_by_type(my_book_markets, market_key)
                 pinnacle_data = match_market(pinnacle_markets,market_key)
+                lowvig_data = match_market(lowvig_markets,market_key)
                 if books_for_curr_market and pinnacle_data:
                     formatted_market = {'type': market_key, 'data': []}
                     best_odds = get_best_odds(books_for_curr_market)
-                    for my_outcome, p_outcome in zip(best_odds, pinnacle_data['outcomes']):
+
+                    if lowvig_data: 
+                        outcomes_iter =  zip(best_odds, pinnacle_data['outcomes'], lowvig_data['outcomes'])
+                    else: 
+                        outcomes_iter =  zip(best_odds, pinnacle_data['outcomes'])
+                    for outcomes in outcomes_iter:
+                        if lowvig_data: 
+                            my_outcome, p_outcome, lv_outcome = outcomes
+                            lv_point = format_point(lv_outcome.get('point', ''), market_key) if 'point' in lv_outcome else '' 
+                            lv_american = format_american_odds(lv_outcome['price'])
+                        else: 
+                            my_outcome, p_outcome = outcomes
+                            lv_point = ''
+                            lv_american = ''
                         my_american = format_american_odds(my_outcome['price'])
                         p_american = format_american_odds(p_outcome['price'])
                         my_point = format_point(my_outcome['point'], market_key) if my_outcome['point'] is not None else ''
                         p_point = format_point(p_outcome.get('point', ''), market_key) if 'point' in p_outcome else ''
-                        my_prob = american_to_probability(int(my_outcome['price']))
+
+                        my_prob = american_to_probability(int(my_outcome['price'])) 
                         p_prob = american_to_probability(int(p_outcome['price']))
                         pct_edge = round(p_prob - my_prob,2) 
                         # Handle moneyline comparison
@@ -188,7 +213,9 @@ def process_games(games):
                                     'my_point': my_point,
                                     'p_point': p_point,
                                     'book_name' : my_outcome['sportsbook'],
-                                    'pct_edge' : pct_edge
+                                    'pct_edge' : pct_edge,
+                                    'lv_point' : lv_point,
+                                    'lv_price' : lv_american,
                                 })
                         elif market_key == 'totals':
                             is_over = 'Over' in my_outcome['name']
@@ -205,7 +232,9 @@ def process_games(games):
                                         'my_point': my_point,
                                         'p_point': alt_line['point'],
                                         'book_name' : my_outcome['sportsbook'],
-                                        'pct_edge' : pct_edge 
+                                        'pct_edge' : pct_edge,
+                                        'lv_point' : lv_point,
+                                        'lv_price' : lv_american,
                                     })
                             elif (float(my_point) == float(p_point) and pct_edge >= 1):
                                 formatted_market['data'].append({
@@ -215,7 +244,9 @@ def process_games(games):
                                     'my_point': my_point,
                                     'p_point': p_point,
                                     'book_name' : my_outcome['sportsbook'],
-                                    'pct_edge' : pct_edge
+                                    'pct_edge' : pct_edge,
+                                    'lv_point' : lv_point,
+                                    'lv_price' : lv_american,
                                 })
                         elif market_key == 'spreads':
                             if (float(my_point) != float(p_point)):
@@ -230,7 +261,9 @@ def process_games(games):
                                         'my_point': my_point,
                                         'p_point': alt_line['point'],
                                         'book_name' : my_outcome['sportsbook'],
-                                        'pct_edge' : pct_edge
+                                        'pct_edge' : pct_edge,
+                                        'lv_point' : lv_point,
+                                        'lv_price' : lv_american,
                                     })
                             elif(float(my_point) == float(p_point) and pct_edge >= 1): 
                                 formatted_market['data'].append({
@@ -240,7 +273,9 @@ def process_games(games):
                                     'my_point': my_point,
                                     'p_point': p_point,
                                     'book_name' : my_outcome['sportsbook'],
-                                    'pct_edge' : pct_edge
+                                    'pct_edge' : pct_edge,
+                                    'lv_point' : lv_point,
+                                    'lv_price' : lv_american,
                                 })
 
                     if formatted_market['data']:
@@ -253,6 +288,7 @@ def process_games(games):
 
 
 def fetch_odds(sport_key):
+    global request_counter
     api_key = os.getenv('THE_ODDS_API_KEY')
     if not api_key:
         return "API key not found. Please set the environment variable 'THE_ODDS_API_KEY'."
@@ -264,9 +300,13 @@ def fetch_odds(sport_key):
         "markets": "h2h,spreads,totals",
         "oddsFormat": "american"
     }
+    # sleep to avoid rate limiting
+    if (request_counter >= 30):
+        request_counter = 0
+        time.sleep(1)
     response = requests.get(url, params=params)
+    request_counter += 1 
     quota_used = int(response.headers._store.get('x-requests-last')[1])
-    time.sleep(1)
     if response.status_code == 200:
         games = response.json()
     else:
