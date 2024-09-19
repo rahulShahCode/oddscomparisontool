@@ -100,5 +100,5 @@ input:checked + .slider:before {
     color: #555;
 }
 .col-md-6 {
-    max-width: 33% !important;
+    max-width: 25% !important;
 }
