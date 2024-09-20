@@ -24,24 +24,17 @@ def retrieve_data():
 @app.route('/')
 def home():
     sport_key = request.args.get('sport', 'baseball_mlb')
-    with open('data/processed_games.json', 'r') as f: 
-        data = json.load(f)
-    if sport_key in data: 
-        print("Loading from file")
-        processed_games = data[sport_key]
-    else: 
-        quota = 0 
-        games, quota_last_used = fetch_odds(sport_key)
-        quota += quota_last_used
-        processed_games, quota_last_used = process_games(games)
-        quota += quota_last_used
-        print("Fetched odds")
-        print("Last used quota: " + str(quota))
-    return render_template('odds.html', games=processed_games, sport=sport_key, last_updated=data['last_update'])
+    quota = 0 
+    games, quota_last_used = fetch_odds(sport_key)
+    quota += quota_last_used
+    processed_games, quota_last_used = process_games(games)
+    quota += quota_last_used
+    print("Fetched odds")
+    print("Last used quota: " + str(quota))
+    return render_template('odds.html', games=processed_games, sport=sport_key, last_updated=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
 
-#Initial run
-retrieve_data()
+
 
 # Setup scheduler
 # scheduler = BackgroundScheduler()
