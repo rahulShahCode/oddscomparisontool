@@ -315,6 +315,4 @@ def fetch_odds(sport_key):
     # Filter out games that have already commenced using list comprehension
     current_time = datetime.now(timezone.utc)
     filtered_games = [game for game in games if datetime.strptime(game['commence_time'], "%Y-%m-%dT%H:%M:%S%z") > current_time]
-    with open('data/curr_data.json', 'w') as f: 
-       json.dump(games,f)
     return filtered_games, quota_used

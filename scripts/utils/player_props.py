@@ -1,5 +1,4 @@
 import requests 
-import json 
 from datetime import datetime
 import pytz
 import os 
@@ -13,6 +12,19 @@ api_key = os.getenv('THE_ODDS_API_KEY')
 sports = ['americanfootball_nfl']
 markets = ['player_anytime_td','player_pass_tds', 'player_pass_yds', 'player_pass_completions', 'player_pass_attempts', 'player_pass_interceptions', 
            'player_rush_yds', 'player_rush_attempts', 'player_receptions', 'player_reception_yds']
+
+def remove_commenced_games(): 
+    conn = sqlite3.connect('odds.db')
+    c = conn.cursor()
+    
+    # Get current time in EST/EDT
+    current_time = datetime.now(pytz.timezone('US/Eastern'))
+    
+    # Remove games that have already commenced
+    c.execute('DELETE FROM player_props WHERE event_commence_time < ?', (current_time,))
+    
+    conn.commit()
+    conn.close() 
 
 # Function to convert UTC to EDT 
 def convert_utc_to_edt(utc_time_str):
@@ -91,20 +103,20 @@ def find_favorable_lines(props, event_name : str, commence_time : str):
     
     for bookmaker in bookmakers:
         if bookmaker['key'] == 'pinnacle':
-            continue  # Skip Pinnacle for comparison purposes
+            continue  # Skip Pinny 
 
         for market in bookmaker['markets']:
             pinnacle_market = next((m for m in pinnacle_data['markets'] if m['key'] == market['key']), None)
             if not pinnacle_market:
-                continue  # No corresponding market in Pinnacle for comparison
+                continue  # Pinny lines don't exist
 
-            bet_type = transform_string(market['key'])  # Get the human-readable bet type
+            bet_type = transform_string(market['key'])  
 
             for outcome in market['outcomes']:
                 pin_outcome = next((o for o in pinnacle_market['outcomes']
                                     if o['description'] == outcome['description'] and o['name'] == outcome['name']), None)
                 if not pin_outcome:
-                    continue  # No corresponding outcome in Pinnacle for comparison
+                    continue  
 
                 # Calculate implied probabilities
                 pin_prob = american_to_implied(pin_outcome['price'])
@@ -280,16 +292,16 @@ def store_props(props):
         conn.close()                             
 
 def main(): 
+    # TODO : Routine collection of player props. Check rate limits + gauge cost 
+    # ~ >= TWice per day 
     sport = sports[0]
     events = get_events(sport)
-    today_events = events 
     diff_pts = [] 
     same_pts = []
-    for event in today_events: 
+    for event in events: 
         props = fetch_props(event['id'], event['sport_key'])
-        # with open('data/debug/player_props.json', 'w') as f:
-        #     json.dump(props, f)
         store_props(props)
+        remove_commenced_games()
         event_name = f"{event['away_team']} @ {event['home_team']}"
         results = find_favorable_lines(props, event_name, event['commence_time_edt'])  # Process the data
         if results and results[0]:

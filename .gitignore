@@ -12,3 +12,4 @@ scripts/utils/kicking_points.py
 *.sqlite3
 .vscode/
 venv 
+.DS_STORE 
