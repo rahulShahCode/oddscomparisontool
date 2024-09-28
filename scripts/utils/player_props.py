@@ -13,6 +13,7 @@ sports = ['americanfootball_nfl']
 markets = ['player_anytime_td','player_pass_tds', 'player_pass_yds', 'player_pass_completions', 'player_pass_attempts', 'player_pass_interceptions', 
            'player_rush_yds', 'player_rush_attempts', 'player_receptions', 'player_reception_yds']
 
+
 def remove_commenced_games(): 
     conn = sqlite3.connect('odds.db')
     c = conn.cursor()
@@ -157,7 +158,7 @@ def find_favorable_lines(props, event_name : str, commence_time : str):
                    (outcome['name'] == "Under" and outcome['point'] > pin_outcome['point'])) and \
                     pin_prob >= .5 and (point_delta >= 1 or prob_delta >= 2):
                     results_with_different_points.append(result_entry)
-                elif has_point_val and outcome['point'] == pin_outcome['point'] and prob_delta > 5:
+                elif has_point_val and outcome['point'] == pin_outcome['point'] and prob_delta > 3:
                     results_with_same_points.append(result_entry)
 
     # Sort results by most favorable probability difference and then by point value criteria

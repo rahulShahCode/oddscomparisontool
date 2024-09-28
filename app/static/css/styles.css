@@ -1,4 +1,3 @@
-/* styles.css */
 .book_logo {
     margin-left: 5px;
 }
@@ -20,7 +19,6 @@
     flex: 1;
     margin-bottom: 0.5rem;
 }
-
 
 header {
     display: flex;
@@ -92,6 +90,7 @@ input:checked + .slider {
 input:checked + .slider:before {
     transform: translateX(20px);
 }
+
 .last-updated {
     position: absolute;
     top: 10px;
@@ -99,6 +98,41 @@ input:checked + .slider:before {
     font-size: 12px;
     color: #555;
 }
+
 .col-md-6 {
     max-width: 25% !important;
+}
+
+.better-value {
+    background-color: #d4edda;
+    color: #155724;
+    font-weight: bold;
+}
+
+/* Match the styles for both switches */
+.switch-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.switch-label {
+    margin-right: 10px;
+    font-size: 16px;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Update existing classes for live switch */
+.live-switch-container, .better-value-switch-container {
+    display: flex;
+    align-items: center;
+    margin-right: 20px;
+}
+
+/* Combine both switches on the same line */
+.switch-container-wrapper {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 20px; /* Add some spacing between the switches */
 }

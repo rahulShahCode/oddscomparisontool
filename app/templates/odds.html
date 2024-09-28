@@ -11,13 +11,23 @@
 <body>
     <div class="container mt-5">
         <h1>Sports Betting Odds</h1>
-        <div class="live-switch-container">
-            <label for="live-toggle" class="live-switch-label">Show Live Games</label>
-            <label class="switch">
-                <input type="checkbox" id="live-toggle">
-                <span class="slider"></span>
-            </label>
-        </div>
+        <div class="switch-container-wrapper">
+            <div class="live-switch-container">
+                <label for="live-toggle" class="switch-label">Show Live Games</label>
+                <label class="switch">
+                    <input type="checkbox" id="live-toggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        
+            <div class="better-value-switch-container">
+                <label for="better-value-toggle" class="switch-label">Show Only Better Value</label>
+                <label class="switch">
+                    <input type="checkbox" id="better-value-toggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>           
         <div class="last-updated">
             Last Updated: {{ last_updated }}
         </div>
@@ -41,6 +51,10 @@
             <li class="nav-item">
                 <a class="nav-link {{ 'active' if sport == 'mma_mixed_martial_arts' else '' }}"
                     href="/?sport=mma_mixed_martial_arts">MMA</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ 'active' if sport == 'icehockey_nhl' else '' }}"
+                    href="/?sport=icehockey_nhl">NHL</a>
             </li>
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true"

@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 # Ignore environment files
 .env
+venv/
 
 # Ignore debug JSON files
 data/
