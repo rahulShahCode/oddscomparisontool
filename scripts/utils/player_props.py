@@ -4,14 +4,18 @@ import pytz
 import os 
 import pandas as pd 
 import sqlite3
-from datetime import datetime 
-import pytz 
+import openpyxl
 my_bookmakers = ['fanduel', 'draftkings','espnbet','williamhill_us','pinnacle']
+
+SELECTED_BOOK = 'pinnacle'
+
 ATD_DELTA = 2.5
 api_key = os.getenv('THE_ODDS_API_KEY')
+if not api_key:
+    raise EnvironmentError("API key for The Odds API not found. Please set 'THE_ODDS_API_KEY' environment variable.")
 sports = ['americanfootball_nfl']
 markets = ['player_anytime_td','player_pass_tds', 'player_pass_yds', 'player_pass_completions', 'player_pass_attempts', 'player_pass_interceptions', 
-           'player_rush_yds', 'player_rush_attempts', 'player_receptions', 'player_reception_yds']
+           'player_rush_yds', 'player_rush_attempts', 'player_receptions', 'player_reception_yds','player_kicking_points']
 
 
 def remove_commenced_games(): 
@@ -27,8 +31,8 @@ def remove_commenced_games():
     conn.commit()
     conn.close() 
 
-# Function to convert UTC to EDT 
-def convert_utc_to_edt(utc_time_str):
+# Function to convert UTC to ET
+def convert_utc_to_et(utc_time_str):
     # Create a datetime object from the UTC time string
     utc_time = datetime.strptime(utc_time_str, "%Y-%m-%dT%H:%M:%SZ")
     
@@ -58,7 +62,7 @@ def get_events(sport):
     url = f'https://api.the-odds-api.com/v4/sports/{sport}/events'
     resp = requests.get(url, params=params).json()
     for game in resp: 
-        game['commence_time_edt'] = convert_utc_to_edt(game['commence_time'])[:-4]
+        game['commence_time_edt'] = convert_utc_to_et(game['commence_time'])[:-4]
     return resp 
 
 # Function to filter games that start today in EDT timezone 
@@ -266,6 +270,71 @@ def output_to_html(diff_pts : list, same_pts : list):
 
     print("HTML file with combined bets has been saved as 'player_props_tables.html'")
 
+    save_to_excel(diff_pts,same_pts)
+
+def save_to_excel(diff_pts, same_pts, filename="player_props.xlsx"):
+    # First, sort by Odds Percentage Delta ascending (secondary sort)
+    diff_pts_sorted = sorted(diff_pts, key=lambda x: x['delta'] / 100, reverse=True)
+    
+    # Then, sort by Point Delta descending (primary sort)
+    diff_pts_sorted = sorted(diff_pts_sorted, key=lambda x: x.get('point_delta', 0), reverse=True)
+
+    # Sort same_pts by Odds Percentage Delta (ascending)
+    same_pts_sorted = sorted(same_pts, key=lambda x: x['delta'] / 100, reverse=True)
+
+    # Create a new workbook
+    wb = openpyxl.Workbook()
+
+    # Create sheet for diff_pts
+    ws_diff = wb.active
+    ws_diff.title = "Diff Points"
+
+    # Create sheet for same_pts
+    ws_same = wb.create_sheet(title="Same Points")
+
+    headers = ["Source", "Player", "Type", "Point", "Bet Type", "Odds", "Pinnacle", "Point Delta", "Odds Percentage Delta"]
+
+    # Write diff points data (sorted)
+    ws_diff.append(headers)
+    for row in diff_pts_sorted:
+        point_info = row.get('point', '')
+        odds_percentage_delta = row['delta'] / 100  # Store as number (decimal)
+        ws_diff.append([row['source'], row['player'], row['type'], point_info, row['bet_type'], row['odds'], row['pinnacle'], row.get('point_delta', ''), odds_percentage_delta])
+
+    # Write same points data (sorted)
+    ws_same.append(headers)
+    for row in same_pts_sorted:
+        point_info = row.get('point', '')
+        odds_percentage_delta = row['delta'] / 100  # Store as number (decimal)
+        ws_same.append([row['source'], row['player'], row['type'], point_info, row['bet_type'], row['odds'], row['pinnacle'], row.get('point_delta', ''), odds_percentage_delta])
+
+    # Add filters, sorting, and adjust column width for both sheets
+    for ws in [ws_diff, ws_same]:
+        # Add filters
+        ws.auto_filter.ref = "A1:I1"
+
+        # Format Column I (Odds Percentage Delta) as percentages
+        for row in ws.iter_rows(min_row=2, min_col=9, max_col=9):  # Column I is the 9th column
+            for cell in row:
+                # Ensure that it's being stored as a float and then format as percentage
+                cell.number_format = '0.00%'  # Format as percentage with 2 decimal places
+
+        # Adjust column widths automatically
+        for col in ws.columns:
+            max_length = 0
+            column = col[0].column_letter  # Get the column name (A, B, C, etc.)
+            for cell in col:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))  # Calculate max length as a string to adjust width
+                except:
+                    pass
+            adjusted_width = (max_length + 2)
+            ws.column_dimensions[column].width = adjusted_width
+
+    # Save the Excel file
+    wb.save(filename)
+    print(f"Excel file '{filename}' has been created with filters, sorting, and adjusted column widths.")
 
 def store_props(props): 
     conn = sqlite3.connect('odds.db')
@@ -277,7 +346,9 @@ def store_props(props):
     sport_key = props['sport_key']
     event_id = props['id']
 
-    markets = next((p['markets'] for p in bookmakers if p['key'] == 'pinnacle'), None) 
+    table_name = 'player_props' if SELECTED_BOOK == 'pinnacle' else 'fanduel_props' 
+
+    markets = next((p['markets'] for p in bookmakers if p['key'] == SELECTED_BOOK), None) 
     if markets is not None: 
         for m in markets: 
             market_type = m['key']
@@ -287,7 +358,7 @@ def store_props(props):
                 outcome_type = o['name']
                 odds = o['price']
                 point_value = o.get('point', 0)
-                c.execute('INSERT OR REPLACE INTO player_props VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 
+                c.execute(f'INSERT OR REPLACE INTO {table_name} VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 
                         (event_id,event_name,sport_key,market_type,outcome_type,player_name,point_value, odds, commence_time,last_update))
         conn.commit()
         conn.close()                             
@@ -296,7 +367,7 @@ def main():
     # TODO : Routine collection of player props. Check rate limits + gauge cost 
     # ~ >= TWice per day 
     sport = sports[0]
-    events = get_events(sport)
+    events = get_todays_events(get_events(sport))
     diff_pts = [] 
     same_pts = []
     for event in events: 
