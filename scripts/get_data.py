@@ -6,7 +6,7 @@ import logging
 import time
 
 
-my_bookmakers = ['fanduel', 'draftkings','espnbet','williamhill_us']
+my_bookmakers = ['fanduel', 'draftkings','espnbet','williamhill_us', 'betmgm']
 sharp_bookmakers = ['pinnacle', 'lowvig']
 request_counter = 0
 
