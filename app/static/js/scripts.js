@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
 
     // Function to convert New York time to UTC
     function convertToUTC(newYorkTime) {
-        let nyDate = new Date(newYorkTime + ' GMT-0400'); // Adjust for EDT or EST as needed
+        let nyDate = new Date(newYorkTime.replace("Start Time: ", "") + ' GMT-0400'); // Adjust for EDT or EST as needed
         return nyDate.toISOString();
     }
 

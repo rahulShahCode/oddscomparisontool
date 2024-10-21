@@ -32,29 +32,30 @@
             Last Updated: {{ last_updated }}
         </div>
         <ul class="nav nav-tabs">
+
             <li class="nav-item">
-                <a class="nav-link {{ 'active' if sport == 'baseball_mlb' else '' }}"
-                    href="/?sport=baseball_mlb">MLB</a>
+                <a class="nav-link {{ 'active' if sport == 'basketball_nba' else '' }}"
+                    href="/?sport=basketball_nba">NBA</a>
             </li>
             <li class="nav-item">
                 <a class="nav-link {{ 'active' if sport == 'americanfootball_nfl' else '' }}"
                     href="/?sport=americanfootball_nfl">NFL</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {{ 'active' if sport == 'basketball_wnba' else '' }}"
-                    href="/?sport=basketball_wnba">WNBA</a>
-            </li>
-            <li class="nav-item">
                 <a class="nav-link {{ 'active' if sport == 'americanfootball_ncaaf' else '' }}"
                     href="/?sport=americanfootball_ncaaf">NCAAF</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {{ 'active' if sport == 'mma_mixed_martial_arts' else '' }}"
-                    href="/?sport=mma_mixed_martial_arts">MMA</a>
-            </li>
-            <li class="nav-item">
                 <a class="nav-link {{ 'active' if sport == 'icehockey_nhl' else '' }}"
                     href="/?sport=icehockey_nhl">NHL</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ 'active' if sport == 'baseball_mlb' else '' }}"
+                    href="/?sport=baseball_mlb">MLB</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ 'active' if sport == 'mma_mixed_martial_arts' else '' }}"
+                    href="/?sport=mma_mixed_martial_arts">MMA</a>
             </li>
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true"
