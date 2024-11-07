@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 
 <head>
     <meta charset="UTF-8">
@@ -10,24 +10,34 @@
 </head>
 <body>
     <div class="container mt-5">
-        <h1>Sports Betting Odds</h1>
-        <div class="switch-container-wrapper">
-            <div class="live-switch-container">
-                <label for="live-toggle" class="switch-label">Show Live Games</label>
-                <label class="switch">
-                    <input type="checkbox" id="live-toggle">
-                    <span class="slider"></span>
-                </label>
-            </div>
-        
-            <div class="better-value-switch-container">
-                <label for="better-value-toggle" class="switch-label">Show Only Better Value</label>
-                <label class="switch">
-                    <input type="checkbox" id="better-value-toggle">
-                    <span class="slider"></span>
-                </label>
-            </div>
-        </div>           
+        <div class="mb-4">
+            <h1 class="mb-3">Sports Betting Odds</h1>
+            <div class="switch-container-wrapper">
+                <div class="live-switch-container">
+                    <label for="live-toggle" class="switch-label">Show Live Games</label>
+                    <label class="switch">
+                        <input type="checkbox" id="live-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            
+                <div class="better-value-switch-container">
+                    <label for="better-value-toggle" class="switch-label">Show Only Better Value</label>
+                    <label class="switch">
+                        <input type="checkbox" id="better-value-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="dark-mode-switch-container">
+                    <label for="dark-mode-toggle" class="switch-label">Dark Mode</label>
+                    <label class="switch">
+                        <input type="checkbox" id="dark-mode-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>           
+        </div>
         <div class="last-updated">
             Last Updated: {{ last_updated }}
         </div>
@@ -50,8 +60,8 @@
                     href="/?sport=icehockey_nhl">NHL</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {{ 'active' if sport == 'baseball_mlb' else '' }}"
-                    href="/?sport=baseball_mlb">MLB</a>
+                <a class="nav-link {{ 'active' if sport == 'basketball_ncaab' else '' }}"
+                    href="/?sport=basketball_ncaab">NCAAB</a>
             </li>
             <li class="nav-item">
                 <a class="nav-link {{ 'active' if sport == 'mma_mixed_martial_arts' else '' }}"
@@ -90,7 +100,13 @@
                         {% for data in market.data %}
                         <div class="row text-center inline-outcome">
                             <div class="col-md-6">
+                                {% if data.link %}
+                                <a href="{{ data.link }}" target="_blank" class="odds-link">
+                                    <span>{{ data.name }} {{ data.my_point }}: {{ data.my_book }}</span>
+                                </a>
+                                {% else %}
                                 <span>{{ data.name }} {{ data.my_point }}: {{ data.my_book }}</span>
+                                {% endif %}
                                 <img src="{{ url_for('static', filename='img/' ~ data.book_name ~ '_logo.jpg') }}" class="book_logo" alt="{{ data.book_name }} Logo" height="20">
                             </div>
                             <div class="col-md-6">

@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', (event) => {
     const liveToggle = document.getElementById('live-toggle');
     const betterValueToggle = document.getElementById('better-value-toggle'); // New toggle for better value filter
-
+    const darkModeToggle = document.getElementById('dark-mode-toggle');
     // Function to convert New York time to UTC
     function convertToUTC(newYorkTime) {
         let nyDate = new Date(newYorkTime.replace("Start Time: ", "") + ' GMT-0400'); // Adjust for EDT or EST as needed
@@ -52,6 +52,44 @@ document.addEventListener('DOMContentLoaded', (event) => {
             }
         });
     }
+
+    // Dark mode toggle functionality
+    function setTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+    }
+
+    function toggleDarkMode() {
+        if (darkModeToggle.checked) {
+            setTheme('dark');
+        } else {
+            setTheme('light');
+        }
+    }
+
+    // Check for saved theme preference or prefer-color-scheme
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+
+    if (savedTheme) {
+        setTheme(savedTheme);
+        darkModeToggle.checked = savedTheme === 'dark';
+    } else if (prefersDarkScheme.matches) {
+        setTheme('dark');
+        darkModeToggle.checked = true;
+    }
+
+    // Event listener for dark mode toggle
+    darkModeToggle.addEventListener('change', toggleDarkMode);
+
+    // Event listener for system theme changes
+    prefersDarkScheme.addEventListener('change', (e) => {
+        if (!localStorage.getItem('theme')) {
+            const newTheme = e.matches ? 'dark' : 'light';
+            setTheme(newTheme);
+            darkModeToggle.checked = e.matches;
+        }
+    });
 
     // Event listener for the live game toggle switch
     liveToggle.addEventListener('change', () => {

@@ -4,6 +4,7 @@ import os
 from datetime import datetime, timezone, timedelta
 import logging 
 import time
+import pytz  
 
 
 my_bookmakers = ['fanduel', 'draftkings','espnbet','williamhill_us', 'betmgm', 'betrivers', 'hardrockbet']
@@ -18,11 +19,15 @@ def get_best_odds(books):
             name = outcome['name']
             price = outcome['price']
             point = outcome.get('point', None)
+            link = outcome.get('link', None)
+            if link is not None: 
+                link = link.replace("{state}", "nj")
             if name not in outcomes:
                 outcomes[name] = {
                     'best_price': price,
                     'best_point': point,
-                    'sportsbook': book
+                    'sportsbook': book,
+                    'link' : link
                 }
             else:
                 current_best = outcomes[name]
@@ -31,7 +36,8 @@ def get_best_odds(books):
                         outcomes[name] = {
                             'best_price': price,
                             'best_point': point,
-                            'sportsbook': book
+                            'sportsbook': book,
+                            'link' : link
                         }
                 elif market_type == 'totals':
                     if name == 'Over':
@@ -39,21 +45,24 @@ def get_best_odds(books):
                             outcomes[name] = {
                                 'best_price': price,
                                 'best_point': point,
-                                'sportsbook': book
+                                'sportsbook': book,
+                                'link' : link
                             }
                     elif name == 'Under':
                         if point > current_best['best_point'] or (point == current_best['best_point'] and price > current_best['best_price']):
                             outcomes[name] = {
                                 'best_price': price,
                                 'best_point': point,
-                                'sportsbook': book
+                                'sportsbook': book,
+                                'link' : link
                             }
                 elif market_type == 'spreads':
                     if abs(point) > abs(current_best['best_point']) or (abs(point) == abs(current_best['best_point']) and price > current_best['best_price']):
                         outcomes[name] = {
                             'best_price': price,
                             'best_point': point,
-                            'sportsbook': book
+                            'sportsbook': book,
+                            'link' : link
                         }
     best_odds = []
     for name, details in outcomes.items():
@@ -61,7 +70,8 @@ def get_best_odds(books):
             'name': name,
             'price': details['best_price'],
             'point': details['best_point'],
-            'sportsbook': details['sportsbook']
+            'sportsbook': details['sportsbook'],
+            'link' : details['link']
         })
     
     return best_odds
@@ -131,7 +141,16 @@ def decimal_to_american(odds):
 
 def format_datetime(timestamp):
     utc_time = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%SZ')
-    est_time = utc_time - timedelta(hours=4)  # Adjust for Eastern Standard Time
+    # Define the UTC and Eastern Time zones
+    utc_zone = pytz.utc
+    eastern_zone = pytz.timezone('America/New_York')
+    
+    # Localize the UTC time
+    utc_time = utc_zone.localize(utc_time)
+    
+    # Convert to Eastern Time, handling EST/EDT automatically
+    est_time = utc_time.astimezone(eastern_zone)
+    
     return est_time.strftime('%B %d, %Y %H:%M')
 
 
@@ -235,6 +254,7 @@ def process_games(games):
                                         'pct_edge' : pct_edge,
                                         'lv_point' : lv_point,
                                         'lv_price' : lv_american,
+                                        'link' : my_outcome['link']
                                     })
                             elif (float(my_point) == float(p_point) and pct_edge >= 1):
                                 formatted_market['data'].append({
@@ -247,6 +267,7 @@ def process_games(games):
                                     'pct_edge' : pct_edge,
                                     'lv_point' : lv_point,
                                     'lv_price' : lv_american,
+                                    'link' : my_outcome['link']
                                 })
                         elif market_key == 'spreads':
                             if (float(my_point) != float(p_point)):
@@ -264,6 +285,7 @@ def process_games(games):
                                         'pct_edge' : pct_edge,
                                         'lv_point' : lv_point,
                                         'lv_price' : lv_american,
+                                        'link' : my_outcome['link']
                                     })
                             elif(float(my_point) == float(p_point) and pct_edge >= 1): 
                                 formatted_market['data'].append({
@@ -276,6 +298,7 @@ def process_games(games):
                                     'pct_edge' : pct_edge,
                                     'lv_point' : lv_point,
                                     'lv_price' : lv_american,
+                                    'link' : my_outcome['link']
                                 })
 
                     if formatted_market['data']:
@@ -298,7 +321,8 @@ def fetch_odds(sport_key):
         "apiKey": api_key,
         "bookmakers": ','.join(my_bookmakers + sharp_bookmakers),
         "markets": "h2h,spreads,totals",
-        "oddsFormat": "american"
+        "oddsFormat": "american",
+        "includeLinks" : "true"
     }
     # sleep to avoid rate limiting
     if (request_counter >= 30):

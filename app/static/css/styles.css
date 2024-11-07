@@ -1,6 +1,7 @@
 .book_logo {
     margin-left: 5px;
 }
+
 .inline-market {
     display: flex;
     align-items: center;
@@ -9,7 +10,7 @@
 
 .inline-market h6 {
     margin-right: 1rem;
-    margin-bottom: 0; /* Remove bottom margin to align properly */
+    margin-bottom: 0;
 }
 
 .inline-outcome {
@@ -20,12 +21,12 @@
     margin-bottom: 0.5rem;
 }
 
+/* Header styles */
 header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 10px;
-    background-color: #f8f8f8;
     border-bottom: 1px solid #ddd;
 }
 
@@ -35,12 +36,23 @@ header h1 {
     font-family: 'Helvetica Neue', Arial, sans-serif;
 }
 
-.live-switch-container {
+/* Switch styles */
+.switch-container-wrapper {
     display: flex;
+    justify-content: flex-start;
     align-items: center;
+    gap: 20px;
 }
 
-.live-switch-label {
+.live-switch-container,
+.better-value-switch-container,
+.dark-mode-switch-container {
+    display: flex;
+    align-items: center;
+    margin-right: 20px;
+}
+
+.switch-label {
     margin-right: 10px;
     font-size: 16px;
     font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -109,37 +121,116 @@ input:checked + .slider:before {
     font-weight: bold;
 }
 
-/* Match the styles for both switches */
-.switch-container {
-    display: flex;
-    align-items: center;
-    margin-bottom: 1rem;
+/* Dark mode styles with higher specificity */
+html[data-theme="dark"] {
+    color-scheme: dark;
 }
 
-.switch-label {
-    margin-right: 10px;
-    font-size: 16px;
-    font-family: 'Helvetica Neue', Arial, sans-serif;
+html[data-theme="dark"] body {
+    background-color: #121212 !important;
+    color: #e0e0e0;
 }
 
-/* Update existing classes for live switch */
-.live-switch-container, .better-value-switch-container {
-    display: flex;
-    align-items: center;
-    margin-right: 20px;
+html[data-theme="dark"] .container {
+    background-color: #121212;
 }
 
-/* Combine both switches on the same line */
-.switch-container-wrapper {
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 20px; /* Add some spacing between the switches */
+html[data-theme="dark"] .card {
+    background-color: #1e1e1e;
+    border-color: #333;
 }
-/* Target only Firefox using the @-moz-document rule */
-@-moz-document url-prefix() {
-    h1, h2, h3, h4, h5, h6 {
-      font-weight: 600 !important;
-    }
-  }
-  
+
+html[data-theme="dark"] .card-body {
+    background-color: #1e1e1e;
+}
+
+html[data-theme="dark"] .card-title,
+html[data-theme="dark"] .card-text {
+    color: #e0e0e0;
+}
+
+html[data-theme="dark"] .nav-tabs {
+    border-bottom-color: #333;
+}
+
+html[data-theme="dark"] .nav-link {
+    color: #e0e0e0;
+}
+
+html[data-theme="dark"] .nav-link.active {
+    background-color: #2c2c2c !important;
+    border-color: #333 !important;
+    color: #fff !important;
+}
+
+html[data-theme="dark"] .nav-link:hover {
+    border-color: #444;
+}
+
+html[data-theme="dark"] .dropdown-menu {
+    background-color: #1e1e1e;
+    border-color: #333;
+}
+
+html[data-theme="dark"] .dropdown-item {
+    color: #e0e0e0;
+}
+
+html[data-theme="dark"] .dropdown-item:hover {
+    background-color: #2c2c2c;
+    color: #fff;
+}
+
+html[data-theme="dark"] .switch-label {
+    color: #e0e0e0;
+}
+
+html[data-theme="dark"] .last-updated {
+    color: #a0a0a0;
+}
+
+html[data-theme="dark"] .better-value {
+    background-color: #0d4419;
+    color: #98c99f;
+}
+
+html[data-theme="dark"] .inline-market h6 {
+    color: #e0e0e0;
+}
+
+/* Transition styles */
+body,
+.card,
+.nav-link,
+.dropdown-menu,
+.dropdown-item {
+    transition: background-color 0.3s ease, 
+                color 0.3s ease, 
+                border-color 0.3s ease;
+}
+
+.odds-link {
+    color: inherit;
+    text-decoration: none;
+    transition: opacity 0.2s ease;
+}
+
+.odds-link:hover {
+    text-decoration: none;
+    opacity: 0.8;
+    color: inherit;
+}
+
+/* Dark mode specific link styles */
+html[data-theme="dark"] .odds-link {
+    color: #e0e0e0;
+}
+
+html[data-theme="dark"] .odds-link:hover {
+    color: #ffffff;
+}
+
+/* Better value link styles */
+.better-value .odds-link {
+    color: inherit;
+}

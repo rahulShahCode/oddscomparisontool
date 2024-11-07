@@ -23,7 +23,7 @@ def retrieve_data():
     print("Last used quota: " + str(quota))
 @app.route('/')
 def home():
-    sport_key = request.args.get('sport', 'baseball_mlb')
+    sport_key = request.args.get('sport', 'basketball_nba')
     quota = 0 
     games, quota_last_used = fetch_odds(sport_key)
     quota += quota_last_used
