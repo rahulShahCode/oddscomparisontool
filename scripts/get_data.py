@@ -7,10 +7,16 @@ import time
 import pytz  
 
 
-my_bookmakers = ['fanduel', 'draftkings','espnbet','williamhill_us', 'betmgm', 'betrivers', 'hardrockbet']
+my_bookmakers = ['fanduel', 'draftkings','espnbet','williamhill_us', 'betmgm', 'betrivers']
 sharp_bookmakers = ['pinnacle', 'lowvig']
 request_counter = 0
-
+min_edge = 0
+def calculate_kelly():
+    """
+    Calculate the Kelly fraction and recommended bet
+    based on the user's inputs.
+    """
+    pass 
 def get_best_odds(books): 
     market_type = list(books.values())[0]['key']
     outcomes = {} 
@@ -178,9 +184,23 @@ def format_point(point, market_type):
     except ValueError:
         return point  # Return the point as is if it's not a number
 
+def determine_min_edge(game):
+    sport = game['sport_key']
+    if sport in ['americanfootball_nfl', 'icehockey_nhl', 'mma_mixed_martial_arts']: 
+        return 1 
+    elif sport == 'basketball_nba':
+        return 1.5
+    elif sport == 'basketball_ncaab':
+        return 3
+    else:
+        return 2
+
 def process_games(games):
     quota_sum = 0 
     processed_games = []
+    if (len(games) > 0):
+        min_edge = determine_min_edge(games[0])
+
     for game in games:
         commence_time = datetime.fromisoformat(game['commence_time'][:-1]).replace(tzinfo=timezone.utc)
         now = datetime.now(timezone.utc)   
@@ -224,7 +244,7 @@ def process_games(games):
                         pct_edge = round(p_prob - my_prob,2) 
                         # Handle moneyline comparison
                         if market_key == 'h2h':
-                            if pct_edge >= 1:
+                            if pct_edge >= min_edge and ( .2 <= p_prob <= .75):
                                 formatted_market['data'].append({
                                     'name': my_outcome['name'],
                                     'my_book': my_american,
@@ -244,19 +264,20 @@ def process_games(games):
                                 quota_sum += quota_last_used
                                 if alt_line is not None:
                                     pct_edge = round(american_to_probability(int(alt_line['price'])) - my_prob,2)
-                                    formatted_market['data'].append({
-                                        'name': my_outcome['name'],
-                                        'my_book': my_american,
-                                        'pinnacle': alt_line['price'],
-                                        'my_point': my_point,
-                                        'p_point': alt_line['point'],
-                                        'book_name' : my_outcome['sportsbook'],
-                                        'pct_edge' : pct_edge,
-                                        'lv_point' : lv_point,
-                                        'lv_price' : lv_american,
-                                        'link' : my_outcome['link']
-                                    })
-                            elif (float(my_point) == float(p_point) and pct_edge >= 1):
+                                    if pct_edge >= min_edge: 
+                                        formatted_market['data'].append({
+                                            'name': my_outcome['name'],
+                                            'my_book': my_american,
+                                            'pinnacle': alt_line['price'],
+                                            'my_point': my_point,
+                                            'p_point': alt_line['point'],
+                                            'book_name' : my_outcome['sportsbook'],
+                                            'pct_edge' : pct_edge,
+                                            'lv_point' : lv_point,
+                                            'lv_price' : lv_american,
+                                            'link' : my_outcome['link']
+                                        })
+                            elif (float(my_point) == float(p_point) and pct_edge >= min_edge):
                                 formatted_market['data'].append({
                                     'name': my_outcome['name'],
                                     'my_book': my_american,
@@ -275,19 +296,20 @@ def process_games(games):
                                 quota_sum += quota_last_used
                                 if alt_line is not None: 
                                     pct_edge = round(american_to_probability(int(alt_line['price'])) - my_prob,2)
-                                    formatted_market['data'].append({
-                                        'name': my_outcome['name'],
-                                        'my_book': my_american,
-                                        'pinnacle': alt_line['price'],
-                                        'my_point': my_point,
-                                        'p_point': alt_line['point'],
-                                        'book_name' : my_outcome['sportsbook'],
-                                        'pct_edge' : pct_edge,
-                                        'lv_point' : lv_point,
-                                        'lv_price' : lv_american,
-                                        'link' : my_outcome['link']
-                                    })
-                            elif(float(my_point) == float(p_point) and pct_edge >= 1): 
+                                    if pct_edge >= min_edge:
+                                        formatted_market['data'].append({
+                                            'name': my_outcome['name'],
+                                            'my_book': my_american,
+                                            'pinnacle': alt_line['price'],
+                                            'my_point': my_point,
+                                            'p_point': alt_line['point'],
+                                            'book_name' : my_outcome['sportsbook'],
+                                            'pct_edge' : pct_edge,
+                                            'lv_point' : lv_point,
+                                            'lv_price' : lv_american,
+                                            'link' : my_outcome['link']
+                                        })
+                            elif(float(my_point) == float(p_point) and pct_edge >= min_edge): 
                                 formatted_market['data'].append({
                                     'name': my_outcome['name'],
                                     'my_book': my_american,
