@@ -188,12 +188,8 @@ def determine_min_edge(game):
     sport = game['sport_key']
     if sport in ['americanfootball_nfl', 'icehockey_nhl', 'mma_mixed_martial_arts']: 
         return 1 
-    elif sport == 'basketball_nba':
+    else: 
         return 1.5
-    elif sport == 'basketball_ncaab':
-        return 3
-    else:
-        return 2
 
 def process_games(games):
     quota_sum = 0 
@@ -244,7 +240,7 @@ def process_games(games):
                         pct_edge = round(p_prob - my_prob,2) 
                         # Handle moneyline comparison
                         if market_key == 'h2h':
-                            if pct_edge >= min_edge and ( .2 <= p_prob <= .75):
+                            if pct_edge >= min_edge and ( .1 <= p_prob <= .8):
                                 formatted_market['data'].append({
                                     'name': my_outcome['name'],
                                     'my_book': my_american,
