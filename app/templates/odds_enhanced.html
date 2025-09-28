@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Odds Comparison Tool - Sharp Consensus</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+
+        .risk-stats {
+            background: #f7fafc;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-around;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #718096;
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2d3748;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            background: white;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: #e2e8f0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .tab:hover {
+            background: #cbd5e0;
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .game-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .teams {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2d3748;
+        }
+
+        .game-time {
+            color: #718096;
+            font-size: 14px;
+        }
+
+        .market-section {
+            margin-bottom: 20px;
+        }
+
+        .market-type {
+            background: #f7fafc;
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            color: #4a5568;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            font-size: 14px;
+        }
+
+        .bet-row {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr 1fr 1fr 0.8fr 0.8fr 1fr 1.2fr 0.8fr;
+            gap: 10px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .bet-row:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .bet-header {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr 1fr 1fr 0.8fr 0.8fr 1fr 1.2fr 0.8fr;
+            gap: 10px;
+            padding: 10px 12px;
+            font-weight: bold;
+            color: #4a5568;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .selection {
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .odds {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: #4a5568;
+        }
+
+        .edge {
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .edge-high {
+            background: #48bb78;
+            color: white;
+        }
+
+        .edge-medium {
+            background: #ed8936;
+            color: white;
+        }
+
+        .edge-low {
+            background: #718096;
+            color: white;
+        }
+
+        .key-value {
+            font-weight: bold;
+            color: #9f7aea;
+        }
+
+        .confidence {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .confidence-bar {
+            width: 50px;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #48bb78, #38a169);
+        }
+
+        .sharp-books {
+            font-size: 11px;
+            color: #718096;
+        }
+
+        .bet-button {
+            padding: 6px 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .bet-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.4);
+        }
+
+        .stake {
+            font-weight: bold;
+            color: #2d3748;
+        }
+
+        .no-games {
+            text-align: center;
+            padding: 40px;
+            background: white;
+            border-radius: 15px;
+            color: #718096;
+        }
+
+        .nfl-badge {
+            background: #1a202c;
+            color: #f7fafc;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .situational-note {
+            font-size: 11px;
+            color: #e53e3e;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Enhanced Odds Comparison Tool</h1>
+            <p style="color: #718096;">Sharp consensus analysis with risk management</p>
+            <p style="color: #4a5568; margin-top: 5px;">Last Updated: {{ last_updated }}</p>
+
+            {% if risk_stats %}
+            <div class="risk-stats">
+                <div class="stat-item">
+                    <div class="stat-label">Bankroll</div>
+                    <div class="stat-value">${{ "%.2f"|format(risk_stats.bankroll) }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Daily P&L</div>
+                    <div class="stat-value" style="color: {{ 'red' if risk_stats.daily_pnl < 0 else 'green' }}">
+                        ${{ "%.2f"|format(risk_stats.daily_pnl) }}
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Bets Today</div>
+                    <div class="stat-value">{{ risk_stats.bets_today }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Status</div>
+                    <div class="stat-value" style="color: {{ 'red' if risk_stats.at_daily_limit else 'green' }}">
+                        {{ 'LIMIT' if risk_stats.at_daily_limit else 'ACTIVE' }}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="tabs">
+            <button class="tab {{ 'active' if sport == 'americanfootball_nfl' }}"
+                    onclick="window.location.href='/?sport=americanfootball_nfl'">
+                NFL 🏈
+            </button>
+            <button class="tab {{ 'active' if sport == 'basketball_nba' }}"
+                    onclick="window.location.href='/?sport=basketball_nba'">
+                NBA 🏀
+            </button>
+            <button class="tab {{ 'active' if sport == 'baseball_mlb' }}"
+                    onclick="window.location.href='/?sport=baseball_mlb'">
+                MLB ⚾
+            </button>
+            <button class="tab {{ 'active' if sport == 'americanfootball_ncaaf' }}"
+                    onclick="window.location.href='/?sport=americanfootball_ncaaf'">
+                NCAAF 🏈
+            </button>
+            <button class="tab {{ 'active' if sport == 'icehockey_nhl' }}"
+                    onclick="window.location.href='/?sport=icehockey_nhl'">
+                NHL 🏒
+            </button>
+        </div>
+
+        {% if games %}
+            {% for game in games %}
+            <div class="game-card">
+                <div class="game-header">
+                    <div class="teams">
+                        {{ game.away_team }} @ {{ game.home_team }}
+                        {% if 'nfl' in game.sport_key %}
+                        <span class="nfl-badge">NFL</span>
+                        {% endif %}
+                    </div>
+                    <div class="game-time">{{ game.commence_time }}</div>
+                </div>
+
+                {% for market in game.formatted_markets %}
+                <div class="market-section">
+                    <div class="market-type">{{ market.type }}</div>
+
+                    {% if sport == 'americanfootball_nfl' %}
+                    <div class="bet-header">
+                        <div>Selection</div>
+                        <div>Best Odds</div>
+                        <div>Sharp</div>
+                        <div>Edge</div>
+                        <div>Key#</div>
+                        <div>Adj Edge</div>
+                        <div>Conf</div>
+                        <div>Book</div>
+                        <div>Stake</div>
+                    </div>
+                    {% else %}
+                    <div class="bet-header">
+                        <div>Selection</div>
+                        <div>Best Odds</div>
+                        <div>Pinnacle</div>
+                        <div>Edge</div>
+                        <div>-</div>
+                        <div>-</div>
+                        <div>-</div>
+                        <div>Book</div>
+                        <div>Stake</div>
+                    </div>
+                    {% endif %}
+
+                    {% for outcome in market.data %}
+                    <div class="bet-row">
+                        <div class="selection">
+                            {{ outcome.name }} {{ outcome.point if outcome.point else '' }}
+                        </div>
+                        <div class="odds">{{ outcome.rec_book or outcome.my_book }}</div>
+                        <div class="odds">{{ outcome.sharp_consensus or outcome.pinnacle }}</div>
+                        <div class="edge {{ 'edge-high' if outcome.edge > 4 else ('edge-medium' if outcome.edge > 2.5 else 'edge-low') }}">
+                            {{ outcome.edge }}%
+                        </div>
+
+                        {% if sport == 'americanfootball_nfl' %}
+                        <div class="key-value">{{ outcome.key_value }}%</div>
+                        <div class="edge {{ 'edge-high' if outcome.adjusted_edge > 4 else 'edge-medium' }}">
+                            {{ outcome.adjusted_edge }}%
+                        </div>
+                        <div class="confidence">
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width: {{ outcome.confidence }}%"></div>
+                            </div>
+                            <span>{{ outcome.confidence }}%</span>
+                        </div>
+                        {% else %}
+                        <div>-</div>
+                        <div>-</div>
+                        <div>-</div>
+                        {% endif %}
+
+                        <div>{{ outcome.book_name }}</div>
+                        <div class="stake">{{ outcome.stake_pct }}%</div>
+                    </div>
+
+                    {% if outcome.situational_notes %}
+                    <div class="situational-note">
+                        ⚠️ {{ outcome.situational_notes | join(', ') }}
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="no-games">
+                <h2>No qualifying bets found</h2>
+                <p>No games meet the minimum edge and risk requirements at this time.</p>
+                <p style="margin-top: 10px;">Try checking other sports or wait for line movements.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+        // Auto-refresh every 2 minutes
+        setTimeout(() => {
+            window.location.reload();
+        }, 120000);
+    </script>
+</body>
+</html>
