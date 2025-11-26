@@ -186,8 +186,10 @@ def format_point(point, market_type):
 
 def determine_min_edge(game):
     sport = game['sport_key']
-    if sport in ['americanfootball_nfl', 'icehockey_nhl', 'mma_mixed_martial_arts']: 
+    if sport in ['americanfootball_nfl', 'icehockey_nhl', 'mma_mixed_martial_arts', 'basketball_nba']: 
         return 1 
+    elif sport in ['americanfootball_ncaaf', 'basketball_ncaab']:
+        return 2.5
     else: 
         return 1.5
 

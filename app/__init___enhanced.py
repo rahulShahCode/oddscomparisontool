@@ -1,11 +1,9 @@
 from flask import Flask, render_template, request, jsonify
-from apscheduler.schedulers.background import BackgroundScheduler
 from scripts.get_data_enhanced import fetch_odds, process_games
 from scripts.risk_manager import RiskManager
 from scripts.nfl_analyzer import NFLAnalyzer
 import json
 from datetime import datetime
-import os
 
 app = Flask(__name__)
 
@@ -16,7 +14,7 @@ nfl_analyzer = NFLAnalyzer()
 def retrieve_data():
     """Fetch and process odds data for scheduled updates."""
     quota = 0
-    sports = ['americanfootball_nfl', 'baseball_mlb', 'basketball_nba']
+    sports = ['americanfootball_nfl', 'basketball_nba', 'basketball_ncaab']
     processed_sports = {}
 
     for sport in sports:
@@ -44,7 +42,7 @@ def home():
     sport_key = request.args.get('sport', 'americanfootball_nfl')  # Default to NFL
 
     try:
-        games, quota_used = fetch_odds(sport_key)
+        games, _ = fetch_odds(sport_key)
         processed_games, _ = process_games(games)
 
         # Add risk management stats
@@ -63,7 +61,7 @@ def home():
 def nfl_analysis():
     """Dedicated NFL analysis page with advanced metrics."""
     try:
-        games, quota_used = fetch_odds('americanfootball_nfl')
+        games, _ = fetch_odds('americanfootball_nfl')
         processed_games, _ = process_games(games)
 
         # Group games by confidence level
